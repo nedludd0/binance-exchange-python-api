@@ -3,23 +3,25 @@ https://python-binance.readthedocs.io/en/latest/index.html#quick-start
 """
 
 # General
-import my_class
+from my_class import BinanceAPIClass
 
 from pprint import pprint
 
-
+"""
 import config_api
 from binance.client import Client
 _binance_client_obj = Client(config_api.API_KEY, config_api.API_SECRET)
-
+"""
 
 # Prepare
 _symbol_first   = 'ADA'
 _symbol_second  = 'BTC'
-_symbol         = f"{_symbol_first}{_symbol_second}".upper()
 _what_fee       = 'taker'
-_what_bal       = 'sell'
+_what_bal       = 'buy'
 _size           = 100
+
+_binance_client_obj = BinanceAPIClass()
+#_binance_client_obj = BinanceAPIClass(_size, _symbol_first, _symbol_second)
 
 #print(f'{my_class.get_quantity_to_buy(_symbol_first, _symbol_second, _what_fee, _size ):.20f}')
 
@@ -28,8 +30,12 @@ _size           = 100
 
 #_out = my_class.get_my_wallet_balance(_binance_client_obj)
 
-
+"""
 _out = my_class.get_my_quantity_to_buy(_binance_client_obj,_symbol_first, _symbol_second, _what_fee, _size=100)
+"""
+
+    
+_out = _binance_client_obj.get_rate_limits()
 
 if _out[0] == 'OK':
     print(f"OK {_out[1]}")
