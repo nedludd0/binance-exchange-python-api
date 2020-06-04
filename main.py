@@ -1,7 +1,3 @@
-"""
-https://python-binance.readthedocs.io/en/latest/index.html#quick-start
-"""
-
 # General
 from my_class import BinanceAPIClass
 
@@ -18,36 +14,27 @@ exit(0)
 # Prepare
 _symbol_first   = 'ADA'
 _symbol_second  = 'BTC'
+_symbol         = f"{_symbol_first}{_symbol_second}"
 _what_fee       = 'taker'
 _what_bal       = 'buy'
 _size           = 100
 
 #_binance_client_obj = BinanceAPIClass()
-_binance_client_obj = BinanceAPIClass(_size, _symbol_first, _symbol_second)
+_binance_client_obj = BinanceAPIClass(_symbol_first, _symbol_second, _size)
 
-#print(f'{my_class.get_quantity_to_buy(_symbol_first, _symbol_second, _what_fee, _size ):.20f}')
+"""""""""""""""""""""
+General Endpoints
+"""""""""""""""""""""
+#_out = _binance_client_obj.get_avg_price('BTCUSDT')
 
-
-#pprint(_binance_client_obj.get_trade_fee(symbol=_symbol))
-
-#_out = my_class.get_my_wallet_balance(_binance_client_obj)
+"""""""""""""""""""""
+Account Endpoints
+"""""""""""""""""""""
 
 """
 _out = my_class.get_my_quantity_to_buy(_binance_client_obj,_symbol_first, _symbol_second, _what_fee, _size=100)
 """
-"""
-BTCBTC
-BTCUSDT
-
-BNBBTC
-BNBUSDT
-
-USDTBTC
-USDTUSDT
-"""
-    
-#_out = _binance_client_obj.get_avg_price('BTCUSDT')
-
+ 
 _out = _binance_client_obj.get_my_wallet_balance()
 
 
@@ -63,25 +50,6 @@ for _coin in _out[1]:
 print(f"tot_btc_free: {_coin.get('tot_btc_free')}")
 print(f"tot_usdt_free: {_coin.get('tot_usdt_free')}")
 
-"""""""""""""""""""""
-General Endpoints
-"""""""""""""""""""""
-
-# get market depth
-#depth = _binance_client_obj.get_order_book(symbol='BNBBTC')
-
-
-"""""""""""""""""""""
-Account Endpoints
-"""""""""""""""""""""
-
-#balance = _binance_client_obj.get_asset_balance(asset='USDT')
-
-"""
-_user_balance = my_class.get_tg_user_balance()
-
-pprint(_user_balance)
-"""
 
 """
 _out = my_class.create_order_spot_market('market', 'sell', _symbol_first, _symbol_second, _size)

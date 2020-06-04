@@ -13,7 +13,7 @@ from binance.client import Client, BinanceAPIException
 
 class BinanceAPIClass:
     
-    def __init__(self, _size = 100, _symbol_first = None, _symbol_second = None):
+    def __init__(self, _symbol_first = None, _symbol_second = None, _size = 100):
         
         # Instance Binance Client
         self.binance_client_obj = Client(config_api.API_KEY, config_api.API_SECRET)
@@ -22,11 +22,11 @@ class BinanceAPIClass:
         self.size = _size
         # Symbol
         if _symbol_first is not None:
-            self.symbol_first   = _symbol_first.upper()
+            self.symbol_first = _symbol_first.upper()
         if _symbol_second is not None:
-            self.symbol_second  = _symbol_second.upper()
+            self.symbol_second = _symbol_second.upper()
         if _symbol_first is not None and _symbol_second is not None:
-            self.symbol         = f"{_symbol_first}{_symbol_second}".upper()
+            self.symbol = f"{_symbol_first}{_symbol_second}".upper()
         # Working
         self.response_tuple = None
 
@@ -36,7 +36,7 @@ class BinanceAPIClass:
     
     # Time Formatter
     def my_time_now(self):
-        _tz     = timezone('Europe/Rome') # Default Timezone
+        _tz     = timezone('Europe/Rome') # My Default Timezone
         _now    = datetime.now(_tz).strftime("%Y-%m-%d %H:%M:%S")
         return(_now)
         
@@ -50,7 +50,7 @@ class BinanceAPIClass:
             
         return(_msg_error)
         
-    # Tronco _tot_start al più grande multimo di _step_size
+    # Truncate _tot_start to the largest multiple of _step_size for LOT_SIZE
     def truncate_by_step_size(self, _tot_start, _step_size):
         
         # Prepare
@@ -137,7 +137,12 @@ class BinanceAPIClass:
         _my_asset       = {}
         _account        = None
         _inputs         = None
-        _symbol_temp    = None
+        
+        _symbol_temp_btc        = None
+        _symbol_temp_usdt       = None
+        _avg_price_temp_btc     = 0
+        _avg_price_temp_usdt    = 0
+        
         _tot_btc_free   = 0
         _tot_usdt_free  = 0
         
@@ -148,7 +153,7 @@ class BinanceAPIClass:
                 
                 for bal in _account['balances']: # For every Balances
                     
-                    if float(bal.get('free')) > 0.00000000: # Only Asset > 0
+                    if float(bal.get('free')) > 0: # Only Asset with something
                         
                         """""""""""""""""""""""""""""""""
                          Build Wallet with List Assets Dict
@@ -161,28 +166,6 @@ class BinanceAPIClass:
                         # Build List Assets Dict
                         _my_wallet.append(_my_asset)
                         
-                        print(f"--- Build BTC: {_my_asset.get('asset')}BTC")
-                        print(f"--- Build USDT: {_my_asset.get('asset')}USDT")
-                        print(chr(10))
-
-                        """
-                        
-                        0.00186686 BTC
-                        0.00096066 BNB
-                        0.00281376 USDT
-                                        
-                                        asset   avg_price
-                        --- Build BTC:   BTC      BTC
-                        --- Build USDT:  BTC      USDT
-                        
-                        --- Build BTC:   BNB      BTC
-                        --- Build USDT:  BNB      USDT
-                        
-                        --- Build BTC:   USDT     BTC
-                        --- Build USDT:  USDT     USDT
-    
-                        """
-                        
                         """""""""""""""""""""""""""""""""
                          Build Estimated Value BTC & USDT
                         """""""""""""""""""""""""""""""""
@@ -193,10 +176,9 @@ class BinanceAPIClass:
                             _tot_btc_free = _tot_btc_free + _my_asset.get('free')
                             
                             # Tot Usdt
-                            _symbol_temp    = f"{_my_asset.get('asset')}USDT"
-                            _avg_price_temp = self.get_avg_price(_symbol_temp)
+                            _avg_price_temp = self.get_avg_price('BTCUSDT')
                             if _avg_price_temp[0] == 'OK':
-                                _tot_usdt_free = _tot_usdt_free + _avg_price_temp[1]*_my_asset.get('free')
+                                _tot_usdt_free = _tot_usdt_free + _avg_price_temp[1] * _my_asset.get('free')
                             else:
                                 self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp[1])}")
                         
@@ -204,36 +186,34 @@ class BinanceAPIClass:
                         elif _my_asset.get('asset') == 'USDT':
                             
                             # Tot Btc
-                            _symbol_temp    = f"BTCUSDT"
-                            _avg_price_temp = self.get_avg_price(_symbol_temp)
+                            _avg_price_temp = self.get_avg_price('BTCUSDT')
                             if _avg_price_temp[0] == 'OK':
-                                _tot_btc_free = _tot_btc_free + _my_asset.get('free')/_avg_price_temp[1]
+                                _tot_btc_free = _tot_btc_free + _my_asset.get('free') / _avg_price_temp[1]
                             else:
                                 self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp[1])}")
                             
                             # Tot Usdt
                             _tot_usdt_free = _tot_usdt_free + _my_asset.get('free')
                         
-                        # All Others First Asset
+                        # Others First Asset
                         else:
                             
-                            # btc
-                            _symbol_temp    = f"{_my_asset.get('asset')}BTC"
-                            _avg_price_temp = self.get_avg_price(_symbol_temp)
-                            if _avg_price_temp[0] == 'OK':
-                                _tot_btc_free = _tot_btc_free + _avg_price_temp[1]*Decimal(_my_asset.get('free'))
+                            # Tot Btc & Tot Usdt
+                            _symbol_temp_btc        = f"{_my_asset.get('asset')}BTC"
+                            _symbol_temp_usdt       = f"{_my_asset.get('asset')}USDT"
+                                                        
+                            _avg_price_temp_btc     = self.get_avg_price(_symbol_temp_btc)
+                            _avg_price_temp_usdt    = self.get_avg_price(_symbol_temp_usdt)
+                                                        
+                            if _avg_price_temp_btc[0] == 'OK':
+                                _tot_btc_free = _tot_btc_free + _avg_price_temp_btc[1] * _my_asset.get('free')
                             else:
-                                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp[1])}")
-                        
-                            # Usdt
-                            _symbol_temp    = f"{_my_asset.get('asset')}USDT"
-                            _avg_price_temp = self.get_avg_price(_symbol_temp)
-                            if _avg_price_temp[0] == 'OK':
-                                _tot_usdt_free = _tot_usdt_free + _avg_price_temp[1]*_my_asset.get('free')
+                                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp_btc[1])}")
+
+                            if _avg_price_temp_usdt[0] == 'OK':
+                                _tot_usdt_free = _tot_usdt_free + _avg_price_temp_usdt[1] * _my_asset.get('free')
                             else:
-                                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp[1])}")
-                         
-                         #print(chr(10))
+                                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp_usdt[1])}")
                         
                         
                  # Add Estimated Value BTC & USDT
@@ -326,7 +306,7 @@ class BinanceAPIClass:
     
         return(self.response_tuple)
     
-    # Get Prezzo medio degli ultimi 5 minuti
+    # Get Average price in the last 5 minutes
     def get_avg_price(self, _symbol_input = None):
     
         # Prepare
@@ -489,7 +469,7 @@ class BinanceAPIClass:
         
         # Prepare
         _inputs         = f"{_type}|{_side}|{self.symbol_first}|{self.symbol_second}|{self.size}"
-        _what_fee       = 'taker' # --> vado a Market ergo è un taker
+        _what_fee       = 'taker' # --> I'm going to Market so it's a taker
         
         _quantity       = None
 
@@ -537,9 +517,12 @@ class BinanceAPIClass:
         """
         OUTPUT --> _order
         
-        minimize: {'symbol': 'BNBUSDT', 'orderId': 537197438, 'orderListId': -1, 'clientOrderId': 'qZkxUqi4qLnbNrlhEQDEmN', 'transactTime': 1590848036857, 'price': '0.00000000', 'origQty': '1.00000000', 'executedQty': '1.00000000', 'cummulativeQuoteQty': '17.44210000', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'MARKET', 'side': 'BUY', 'fills': [{'price': '17.44210000', 'qty': '1.00000000', 'commission': '0.00075000', 'commissionAsset': 'BNB', 'tradeId': 61069267}]}
+        Minimize: 
         
-        Leggibile
+        {'symbol': 'BNBUSDT', 'orderId': 537197438, 'orderListId': -1, 'clientOrderId': 'qZkxUqi4qLnbNrlhEQDEmN', 'transactTime': 1590848036857, 'price': '0.00000000', 'origQty': '1.00000000', 'executedQty': '1.00000000', 'cummulativeQuoteQty': '17.44210000', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'MARKET', 'side': 'BUY', 'fills': [{'price': '17.44210000', 'qty': '1.00000000', 'commission': '0.00075000', 'commissionAsset': 'BNB', 'tradeId': 61069267}]}
+        
+        Readable:
+        
         {   'symbol': 'BNBUSDT', 
             'orderId': 537197438, 
             'orderListId': -1, 
