@@ -31,40 +31,13 @@ General Endpoints
 Account Endpoints
 """""""""""""""""""""
 
-"""
-_out = my_class.get_my_quantity_to_buy(_binance_client_obj,_symbol_first, _symbol_second, _what_fee, _size=100)
-"""
 
 _out = _binance_client_obj.get_my_wallet_balance()
 
 # Print My Wallet
 if _out[0] == 'OK':
     
-    # All Assets
-    print(f"{chr(10)}----------------")    
-    print("-- ASSET LIST --")
-    print("----------------")    
-    for _coin in _out[1]:
-        if _coin.get('asset') is not None:
-            print(f"{_coin.get('asset')}: {_coin.get('free')}")
-    
-    # Estimated Value BTC & USDT
-    _out_temp = _binance_client_obj.get_symbol_info_filter_LOT_SIZE('BTCUSDT')
-    if _out_temp[0] == 'OK':
-        _step_size          = _out_temp[1].get('LOT_SIZE_step_size')
-        _btc_truncate_temp  = _binance_client_obj.truncate_by_step_size(_coin.get('tot_btc_free'), _step_size)
-        if _btc_truncate_temp[0] == 'OK':
-            _btc_truncate = _btc_truncate_temp[1]
-        else:
-            _btc_truncate   = _coin.get('tot_btc_free')
-    else:
-        _btc_truncate   = _coin.get('tot_btc_free')
-    
-    print(f"{chr(10)}---------------------")
-    print("-- ESTIMATED VALUE --")
-    print("---------------------")
-    print(f"Tot BTC : {_btc_truncate}")
-    print(f"Tot USDT: {round(_coin.get('tot_usdt_free'),2)} {chr(10)}")
+    _binance_client_obj.print_my_wallet_balance_result(_out[1])
     
 elif _out[0] == 'NOK':
     

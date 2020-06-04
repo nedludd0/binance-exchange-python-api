@@ -228,7 +228,36 @@ class BinanceAPIClass:
             self.response_tuple = ('NOK',  f"{ self.my_log('Exception','get_wallet_balance',_inputs,traceback.format_exc(2))}")
                 
         return(self.response_tuple)
-    
+
+    # Print My Wallet Balance Result:
+    def print_my_wallet_balance_result(self, _result):
+        
+        # All Assets
+        print(f"{chr(10)}----------------")    
+        print("-- ASSET LIST --")
+        print("----------------")    
+        for _coin in _result:
+            if _coin.get('asset') is not None:
+                print(f"{_coin.get('asset')}: {_coin.get('free')}")
+        
+        # Estimated Value BTC & USDT
+        _out_temp = self.get_symbol_info_filter_LOT_SIZE('BTCUSDT')
+        if _out_temp[0] == 'OK':
+            _step_size          = _out_temp[1].get('LOT_SIZE_step_size')
+            _btc_truncate_temp  = self.truncate_by_step_size(_coin.get('tot_btc_free'), _step_size)
+            if _btc_truncate_temp[0] == 'OK':
+                _btc_truncate = _btc_truncate_temp[1]
+            else:
+                _btc_truncate   = _coin.get('tot_btc_free')
+        else:
+            _btc_truncate   = _coin.get('tot_btc_free')
+        
+        print(f"{chr(10)}---------------------")
+        print("-- ESTIMATED VALUE --")
+        print("---------------------")
+        print(f"Tot BTC : {_btc_truncate}")
+        print(f"Tot USDT: {round(_coin.get('tot_usdt_free'),2)} {chr(10)}")
+
     # Get Symbol Info LOT_SIZE
     def get_symbol_info_filter_LOT_SIZE(self, _symbol_input = None):
         
@@ -279,7 +308,6 @@ class BinanceAPIClass:
         # Prepare
         _fee                = None
         _trade_fee_response = None
-        _inputs             = f"{self.symbol}|{_what_fee}"
         
         try:
 
