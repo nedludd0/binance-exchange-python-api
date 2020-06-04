@@ -232,7 +232,7 @@ class BinanceAPIClass:
     # Print My Wallet Balance Result:
     def print_my_wallet_balance_result(self, _result):
         
-        # All Assets
+        # Print All Assets
         print(f"{chr(10)}----------------")    
         print("-- ASSET LIST --")
         print("----------------")    
@@ -240,13 +240,13 @@ class BinanceAPIClass:
             if _coin.get('asset') is not None:
                 print(f"{_coin.get('asset')}: {_coin.get('free')}")
         
-        # Estimated Value BTC & USDT
-        _out_temp = self.get_symbol_info_filter_LOT_SIZE('BTCUSDT')
-        if _out_temp[0] == 'OK':
-            _step_size          = _out_temp[1].get('LOT_SIZE_step_size')
+        # Print Estimated Value BTC & USDT
+        _btc_step_size_temp = self.get_symbol_info_filter_LOT_SIZE('BTCUSDT')
+        if _btc_step_size_temp[0] == 'OK':
+            _step_size          = _btc_step_size_temp[1].get('LOT_SIZE_step_size')
             _btc_truncate_temp  = self.truncate_by_step_size(_coin.get('tot_btc_free'), _step_size)
             if _btc_truncate_temp[0] == 'OK':
-                _btc_truncate = _btc_truncate_temp[1]
+                _btc_truncate   = _btc_truncate_temp[1]
             else:
                 _btc_truncate   = _coin.get('tot_btc_free')
         else:
@@ -492,7 +492,7 @@ class BinanceAPIClass:
             
             symbol_bal_first_size   = symbol_bal_first / 100 *  Decimal(self.size)
             quantity_start          = Decimal(symbol_bal_first_size)
-            quantity_end            = truncate_by_step_size(quantity_start, symbol_step_size)
+            quantity_end            = self.truncate_by_step_size(quantity_start, symbol_step_size)
             if quantity_end[0] == 'OK':
                 self.response_tuple = ('OK', quantity_end[1])
         else:
@@ -503,8 +503,8 @@ class BinanceAPIClass:
     """""""""""""""""""""
     Binance Order Functions
     """""""""""""""""""""
-    # Create a Order Spot Market
-    def create_order_spot_market(self, _type, _side):
+    # Create a Order Spot
+    def create_order_spot(self, _type, _side):
         
         # Prepare
         _inputs         = f"{_type}|{_side}|{self.symbol_first}|{self.symbol_second}|{self.size}"
@@ -523,7 +523,7 @@ class BinanceAPIClass:
         if _side == 'sell':
     
             _client_side    = self.binance_client_obj.SIDE_SELL
-            _quantity       = self.get_my_quantity_to_sell(self.size)
+            _quantity       = self.get_my_quantity_to_sell()
             if _quantity[0] == 'NOK':
                 self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,_quantity[1])}")
                 return(self.response_tuple)
@@ -531,7 +531,7 @@ class BinanceAPIClass:
         elif _side == 'buy':
             
             _client_side    = self.binance_client_obj.SIDE_BUY      
-            _quantity       = self.get_my_quantity_to_buy(_what_fee, self.size)
+            _quantity       = self.get_my_quantity_to_buy(_what_fee)
             if _quantity[0] == 'NOK':
                 self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,_quantity[1])}")
                 return(self.response_tuple)
