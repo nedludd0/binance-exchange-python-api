@@ -5,8 +5,8 @@ from pprint import pprint
 def run(choose):
 
     # Prepare
-    symbol_first       = 'ADA'
-    symbol_second      = 'BTC'
+    symbol_first       = 'BTC'
+    symbol_second      = 'USDT'
     symbol             = f"{symbol_first}{symbol_second}"
     size               = 100
     binance_client_obj = BinanceAPIClass(symbol_first, symbol_second, size)
@@ -37,8 +37,10 @@ def run(choose):
         
     elif choose == 'MakeOrderMarketSymbol':
         
+        _choose = input("Choose buy or sell: ")
+        
         # Make a Order
-        _out = binance_client_obj.create_order_spot('market', 'sell')
+        _out = binance_client_obj.create_order_spot('market', _choose)
 
         if _out[0] == 'OK':
             pprint(f"OK --> {_out[1]}")
@@ -46,14 +48,14 @@ def run(choose):
             print(f"NOK -->  {_out[1]}")
         
     else:
-        """
+
         _out = binance_client_obj.get_my_quantity_to_buy('taker')
         if _out[0] == 'OK':
             pprint(f"OK --> {_out[1]:.20f}")
         elif _out[0] == 'NOK':
             print(f"NOK -->  {_out[1]}")
-        """
-        print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
+
+        #print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
 
 if __name__ == "__main__":

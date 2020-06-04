@@ -33,7 +33,6 @@ class BinanceAPIClass:
     """""""""""""""""""""
     Utility
     """""""""""""""""""""
-    
     # Time Formatter
     def my_time_now(self):
         _tz     = timezone('Europe/Rome') # My Default Timezone
@@ -50,14 +49,14 @@ class BinanceAPIClass:
             
         return(_msg_error)
         
-    # Truncate _tot_start to the largest multiple of _step_size for LOT_SIZE
-    def truncate_by_step_size(self, _tot_start, _step_size):
+    # Truncate _qta_start to the largest multiple of _step_size for LOT_SIZE
+    def truncate_by_step_size(self, _qta_start, _step_size):
         
         # Prepare
         _digits_decimal     = None
-        _tot_start_decimal  = Decimal(_tot_start)
-        _tot_end            = None
-        _inputs             = f"{_tot_start}|{_step_size}"
+        _qta_start_decimal  = Decimal(_qta_start)
+        _qta_end            = None
+        _inputs             = f"{_qta_start}|{_step_size}"
         
         # Calculate Digits
         try:
@@ -71,8 +70,8 @@ class BinanceAPIClass:
         
         # Calculate Tot End
         try:
-            _tot_end = round( _tot_start_decimal , _digits_decimal )
-            self.response_tuple = ('OK',_tot_end)
+            _qta_end = round( _qta_start_decimal , _digits_decimal )
+            self.response_tuple = ('OK',_qta_end)
         except Exception as e:
             self.response_tuple = ('NOK',  f"{ self.my_log('Exception','truncate_by_step_size',_inputs,traceback.format_exc(2))}")
         
@@ -242,7 +241,7 @@ class BinanceAPIClass:
         
         # Print Estimated Value BTC & USDT
         """
-        _btc_step_size_temp = self.get_symbol_info_filter_LOT_SIZE('BTCUSDT')
+        _btc_step_size_temp = self.get_symbol_info_filter_lot_size('BTCUSDT')
         if _btc_step_size_temp[0] == 'OK':
             _step_size          = _btc_step_size_temp[1].get('LOT_SIZE_step_size')
             _btc_truncate_temp  = self.truncate_by_step_size(_coin.get('tot_btc_free'), _step_size)
@@ -262,7 +261,7 @@ class BinanceAPIClass:
         print(f"Tot USDT: {round(_coin.get('tot_usdt_free'),2)} {chr(10)}")
 
     # Get Symbol Info LOT_SIZE
-    def get_symbol_info_filter_LOT_SIZE(self, _symbol_input = None):
+    def get_symbol_info_filter_lot_size(self, _symbol_input = None):
         
         # Prepare
         _symbol_info        = None    
@@ -294,13 +293,13 @@ class BinanceAPIClass:
                             break
                 
                 else:
-                    self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_symbol_info_filter_LOT_SIZE',_inputs,'filters is None')}")
+                    self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_symbol_info_filter_lot_size',_inputs,'filters is None')}")
                 
             else:
-                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_symbol_info_filter_LOT_SIZE',_inputs,'_symbol_info is None')}")
+                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_symbol_info_filter_lot_size',_inputs,'_symbol_info is None')}")
             
         except Exception as e:
-            self.response_tuple = ('NOK',  f"{ self.my_log('Exception','get_symbol_info_filter_LOT_SIZE',_inputs,traceback.format_exc(2))}")
+            self.response_tuple = ('NOK',  f"{ self.my_log('Exception','get_symbol_info_filter_lot_size',_inputs,traceback.format_exc(2))}")
                 
         return(self.response_tuple)
         
@@ -427,7 +426,7 @@ class BinanceAPIClass:
         
         # Get Symbol Step Size
         if _symbol_bal_second[0] == 'OK':
-            _symbol_step_size = self.get_symbol_info_filter_LOT_SIZE()
+            _symbol_step_size = self.get_symbol_info_filter_lot_size()
         else:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_symbol_bal_second[1])}")
             return(self.response_tuple)
@@ -460,8 +459,12 @@ class BinanceAPIClass:
             quantity_start          = (symbol_bal_second_size / symbol_avg_price) * symbol_fee_perc
             quantity_end            = self.truncate_by_step_size(quantity_start, symbol_step_size)
             if quantity_end[0] == 'OK':
-                if quantity_end[1] > symbol_min_qty:
-                    self.response_tuple = ('OK', quantity_end[1])
+                quantity_temp = quantity_end[1]
+                if quantity_temp > symbol_min_qty:
+                    if self.size == 100:
+                        quantity_temp = quantity_temp - symbol_step_size # To avoid "Account has insufficient balance for requested action" if there is a pump in progress
+                    
+                    self.response_tuple = ('OK', quantity_temp)
                 else:
                     _msg                = f"Quantity (= {quantity_start:.10f}) to make BUY is not > Symbol Min Qty (= {symbol_min_qty})"
                     self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
@@ -470,7 +473,6 @@ class BinanceAPIClass:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_symbol_avg_price[1])}")
     
         return(self.response_tuple)
-
 
     # Calculate exact Quantity to SELL
     def get_my_quantity_to_sell(self):
@@ -491,7 +493,7 @@ class BinanceAPIClass:
     
         # Get Symbol Step Size
         if _symbol_bal_first[0] == 'OK':
-            _symbol_step_size = self.get_symbol_info_filter_LOT_SIZE()
+            _symbol_step_size = self.get_symbol_info_filter_lot_size()
         else:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_symbol_bal_first[1])}")
             return(self.response_tuple)
@@ -512,6 +514,8 @@ class BinanceAPIClass:
                 else:
                     _msg                = f"Quantity (= {quantity_start:.10f}) to make SELL is not > Symbol Min Qty (= {symbol_min_qty})"
                     self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_msg)}")
+                    #self.response_tuple = ('NOK',  f"{ self.my_log('Error', 'get_my_quantity_to_buy', _inputs, f'Quantity ({quantity_start:.10f}) to make BUY is not > Symbol Min Qty ({symbol_min_qty})' )}")
+
 
         else:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_symbol_step_size[1])}")
