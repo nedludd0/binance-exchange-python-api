@@ -230,15 +230,20 @@ class BinanceAPIClass:
         return(self.response_tuple)
     
     # Get Symbol Info LOT_SIZE
-    def get_symbol_info_filter_LOT_SIZE(self):
+    def get_symbol_info_filter_LOT_SIZE(self, _symbol_input = None):
         
         # Prepare
         _symbol_info        = None    
         _output_lot_size    = {}
-        _inputs             = self.symbol
         
         try:
-            _symbol_info = self.binance_client_obj.get_symbol_info(self.symbol)
+
+            if _symbol_input is None:
+                _inputs         = self.symbol
+                _symbol_info    = self.binance_client_obj.get_symbol_info(symbol=self.symbol)
+            else:
+                _inputs         = _symbol_input
+                _symbol_info    = self.binance_client_obj.get_symbol_info(symbol=_symbol_input)
             
             if _symbol_info is not None:
                 
@@ -269,7 +274,7 @@ class BinanceAPIClass:
         
     # Get Symbol Fee Cost
     # https://binance.zendesk.com/hc/en-us/articles/360007720071-Maker-vs-Taker
-    def get_fee_cost(self, _what_fee='taker'):
+    def get_fee_cost(self, _what_fee='taker', _symbol_input = None):
         
         # Prepare
         _fee                = None
@@ -277,8 +282,14 @@ class BinanceAPIClass:
         _inputs             = f"{self.symbol}|{_what_fee}"
         
         try:
-            _trade_fee_response = self.binance_client_obj.get_trade_fee(symbol=self.symbol)
-            
+
+            if _symbol_input is None:
+                _inputs             = f"{self.symbol}|{_what_fee}"
+                _trade_fee_response = self.binance_client_obj.get_trade_fee(symbol=self.symbol)
+            else:
+                _inputs             = f"{_symbol_input}|{_what_fee}"
+                _trade_fee_response = self.binance_client_obj.get_trade_fee(symbol=_symbol_input)
+
             if _trade_fee_response is not None:
                 if (_trade_fee_response.get('success')):
                     _trade_fee = self.binance_client_obj.get_trade_fee(symbol=self.symbol).get('tradeFee')
