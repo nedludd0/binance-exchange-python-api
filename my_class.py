@@ -241,6 +241,7 @@ class BinanceAPIClass:
                 print(f"{_coin.get('asset')}: {_coin.get('free')}")
         
         # Print Estimated Value BTC & USDT
+        """
         _btc_step_size_temp = self.get_symbol_info_filter_LOT_SIZE('BTCUSDT')
         if _btc_step_size_temp[0] == 'OK':
             _step_size          = _btc_step_size_temp[1].get('LOT_SIZE_step_size')
@@ -251,11 +252,13 @@ class BinanceAPIClass:
                 _btc_truncate   = _coin.get('tot_btc_free')
         else:
             _btc_truncate   = _coin.get('tot_btc_free')
+        """
         
         print(f"{chr(10)}---------------------")
         print("-- ESTIMATED VALUE --")
         print("---------------------")
-        print(f"Tot BTC : {_btc_truncate}")
+        #print(f"Tot BTC : {_btc_truncate}")
+        print(f"Tot BTC: {round(_coin.get('tot_btc_free'),8)}")        
         print(f"Tot USDT: {round(_coin.get('tot_usdt_free'),2)} {chr(10)}")
 
     # Get Symbol Info LOT_SIZE
@@ -460,7 +463,7 @@ class BinanceAPIClass:
                 if quantity_end[1] > symbol_min_qty:
                     self.response_tuple = ('OK', quantity_end[1])
                 else:
-                    _msg                = f"Quantity (= {quantity_end[1]:.10f}) to make BUY is not > Symbol Min Qty (= {symbol_min_qty})"
+                    _msg                = f"Quantity (= {quantity_start:.10f}) to make BUY is not > Symbol Min Qty (= {symbol_min_qty})"
                     self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
 
         else:
@@ -507,7 +510,7 @@ class BinanceAPIClass:
                 if quantity_end[1] > symbol_min_qty:
                     self.response_tuple = ('OK', quantity_end[1])
                 else:
-                    _msg                = f"Quantity (= {quantity_end[1]:.10f}) to make SELL is not > Symbol Min Qty (= {symbol_min_qty})"
+                    _msg                = f"Quantity (= {quantity_start:.10f}) to make SELL is not > Symbol Min Qty (= {symbol_min_qty})"
                     self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_msg)}")
 
         else:

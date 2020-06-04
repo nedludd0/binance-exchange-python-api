@@ -38,7 +38,7 @@ def run(choose):
     elif choose == 'MakeOrderMarketSymbol':
         
         # Make a Order
-        _out = binance_client_obj.create_order_spot('market', 'buy')
+        _out = binance_client_obj.create_order_spot('market', 'sell')
 
         if _out[0] == 'OK':
             pprint(f"OK --> {_out[1]}")
