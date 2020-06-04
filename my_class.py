@@ -406,11 +406,12 @@ class BinanceAPIClass:
     def get_my_quantity_to_buy(self, _what_fee):
         
         # Prepate
-        _inputs                 = f"{self.symbol_first}|{self.symbol_second}|{_what_fee}|{self.size}"
         _what_bal               = 'buy'
+        _inputs                 = f"{_what_bal}|{self.symbol_first}|{self.symbol_second}|{_what_fee}|{self.size}"
         
         symbol_bal_second       = None
         symbol_step_size        = None
+        symbol_min_qty          = None        
         symbol_fee              = None
         symbol_avg_price        = None
         symbol_bal_second_size  = None
@@ -447,6 +448,7 @@ class BinanceAPIClass:
             
             symbol_bal_second   = _symbol_bal_second[1]
             symbol_step_size    = _symbol_step_size[1].get('LOT_SIZE_step_size')
+            symbol_min_qty      = _symbol_step_size[1].get('LOT_SIZE_minQty')
             symbol_fee          = _symbol_fee[1]        
             symbol_avg_price    = _symbol_avg_price[1]
             
@@ -455,20 +457,27 @@ class BinanceAPIClass:
             quantity_start          = (symbol_bal_second_size / symbol_avg_price) * symbol_fee_perc
             quantity_end            = self.truncate_by_step_size(quantity_start, symbol_step_size)
             if quantity_end[0] == 'OK':
-                self.response_tuple = ('OK', quantity_end[1])
+                if quantity_end[1] > symbol_min_qty:
+                    self.response_tuple = ('OK', quantity_end[1])
+                else:
+                    _msg                = f"Quantity (= {quantity_end[1]:.10f}) to make BUY is not > Symbol Min Qty (= {symbol_min_qty})"
+                    self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
+
         else:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_symbol_avg_price[1])}")
     
         return(self.response_tuple)
 
+
     # Calculate exact Quantity to SELL
     def get_my_quantity_to_sell(self):
         
         # Prepate
-        _inputs                 = f"{self.symbol_first}|{self.symbol_second}|{self.size}"
         _what_bal               = 'sell'
+        _inputs                 = f"{_what_bal}|{self.symbol_first}|{self.symbol_second}|{self.size}"        
         
         symbol_step_size        = None
+        symbol_min_qty          = None
         symbol_bal_first        = None
         symbol_bal_first_size   = None
         quantity_start          = None
@@ -489,12 +498,18 @@ class BinanceAPIClass:
             
             symbol_bal_first        = _symbol_bal_first[1]
             symbol_step_size        = _symbol_step_size[1].get('LOT_SIZE_step_size')
+            symbol_min_qty          = _symbol_step_size[1].get('LOT_SIZE_minQty')            
             
             symbol_bal_first_size   = symbol_bal_first / 100 *  Decimal(self.size)
             quantity_start          = Decimal(symbol_bal_first_size)
             quantity_end            = self.truncate_by_step_size(quantity_start, symbol_step_size)
             if quantity_end[0] == 'OK':
-                self.response_tuple = ('OK', quantity_end[1])
+                if quantity_end[1] > symbol_min_qty:
+                    self.response_tuple = ('OK', quantity_end[1])
+                else:
+                    _msg                = f"Quantity (= {quantity_end[1]:.10f}) to make SELL is not > Symbol Min Qty (= {symbol_min_qty})"
+                    self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_msg)}")
+
         else:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_symbol_step_size[1])}")
     
@@ -527,7 +542,7 @@ class BinanceAPIClass:
             if _quantity[0] == 'NOK':
                 self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,_quantity[1])}")
                 return(self.response_tuple)
-                
+            
         elif _side == 'buy':
             
             _client_side    = self.binance_client_obj.SIDE_BUY      
@@ -535,8 +550,9 @@ class BinanceAPIClass:
             if _quantity[0] == 'NOK':
                 self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,_quantity[1])}")
                 return(self.response_tuple)
+            
         else:
-            self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,'_side unknown')}")
+            self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,_minQty_temp[1])}")
             return(self.response_tuple)
         
         

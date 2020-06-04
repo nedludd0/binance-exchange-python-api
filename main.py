@@ -38,7 +38,7 @@ def run(choose):
     elif choose == 'MakeOrderMarketSymbol':
         
         # Make a Order
-        _out = binance_client_obj.create_order_spot('market', 'sell')
+        _out = binance_client_obj.create_order_spot('market', 'buy')
 
         if _out[0] == 'OK':
             pprint(f"OK --> {_out[1]}")
@@ -46,7 +46,13 @@ def run(choose):
             print(f"NOK -->  {_out[1]}")
         
     else:
-        
+        """
+        _out = binance_client_obj.get_my_quantity_to_buy('taker')
+        if _out[0] == 'OK':
+            pprint(f"OK --> {_out[1]:.20f}")
+        elif _out[0] == 'NOK':
+            print(f"NOK -->  {_out[1]}")
+        """
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
 
