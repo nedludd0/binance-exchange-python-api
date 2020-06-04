@@ -44,9 +44,9 @@ class BinanceAPIClass:
     def my_log(self, _type, _func, _inputs ,_msg):
 
         if _inputs is not None:
-            _msg_error = f"{self.my_time_now()} {_type} on function {_func} with inputs {_inputs} --> MSG {_msg} | "
+            _msg_error = f"{self.my_time_now()} {_type} on function {_func} with inputs {_inputs} --> MESSAGE: {_msg}"
         else:
-            _msg_error = f"{self.my_time_now()} {_type} on function {_func} --> MSG {_msg} | "
+            _msg_error = f"{self.my_time_now()} {_type} on function {_func} --> MESSAGE: {_msg}"
             
         return(_msg_error)
         
@@ -135,21 +135,110 @@ class BinanceAPIClass:
         # Prepare
         _my_wallet      = []
         _my_asset       = {}
-        _place          = 0
         _account        = None
         _inputs         = None
+        _symbol_temp    = None
+        _tot_btc_free   = 0
+        _tot_usdt_free  = 0
         
         try:
             _account = self.binance_client_obj.get_account()
     
-            # Costruisco il Wallet, cioè un dict con gli asset > 0 posseduti 
             if "balances" in _account:
-                for bal in _account['balances']:
-                    if float(bal.get('free')) > 0.00000000:
-                        _my_asset = {'Asset' : bal.get('asset') , 'Amount Free' : bal.get('free'), 'Amount Locked' : bal.get('locked')}
-                        _my_wallet.insert( _place, _my_asset )       
-                        _place = _place+1
+                
+                for bal in _account['balances']: # For every Balances
+                    
+                    if float(bal.get('free')) > 0.00000000: # Only Asset > 0
                         
+                        """""""""""""""""""""""""""""""""
+                         Build Wallet with List Assets Dict
+                        """""""""""""""""""""""""""""""""
+                        # Build Asset Dict
+                        _my_asset = {   'asset'     : bal.get('asset'), 
+                                        'free'      : Decimal(bal.get('free')), 
+                                        'locked'    : Decimal(bal.get('locked'))}
+                                        
+                        # Build List Assets Dict
+                        _my_wallet.append(_my_asset)
+                        
+                        print(f"--- Build BTC: {_my_asset.get('asset')}BTC")
+                        print(f"--- Build USDT: {_my_asset.get('asset')}USDT")
+                        print(chr(10))
+
+                        """
+                        
+                        0.00186686 BTC
+                        0.00096066 BNB
+                        0.00281376 USDT
+                                        
+                                        asset   avg_price
+                        --- Build BTC:   BTC      BTC
+                        --- Build USDT:  BTC      USDT
+                        
+                        --- Build BTC:   BNB      BTC
+                        --- Build USDT:  BNB      USDT
+                        
+                        --- Build BTC:   USDT     BTC
+                        --- Build USDT:  USDT     USDT
+    
+                        """
+                        
+                        """""""""""""""""""""""""""""""""
+                         Build Estimated Value BTC & USDT
+                        """""""""""""""""""""""""""""""""
+                        # First Asset BTC
+                        if _my_asset.get('asset') == 'BTC':
+                            
+                            # Tot Btc
+                            _tot_btc_free = _tot_btc_free + _my_asset.get('free')
+                            
+                            # Tot Usdt
+                            _symbol_temp    = f"{_my_asset.get('asset')}USDT"
+                            _avg_price_temp = self.get_avg_price(_symbol_temp)
+                            if _avg_price_temp[0] == 'OK':
+                                _tot_usdt_free = _tot_usdt_free + _avg_price_temp[1]*_my_asset.get('free')
+                            else:
+                                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp[1])}")
+                        
+                        # First Asset USDT
+                        elif _my_asset.get('asset') == 'USDT':
+                            
+                            # Tot Btc
+                            _symbol_temp    = f"BTCUSDT"
+                            _avg_price_temp = self.get_avg_price(_symbol_temp)
+                            if _avg_price_temp[0] == 'OK':
+                                _tot_btc_free = _tot_btc_free + _my_asset.get('free')/_avg_price_temp[1]
+                            else:
+                                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp[1])}")
+                            
+                            # Tot Usdt
+                            _tot_usdt_free = _tot_usdt_free + _my_asset.get('free')
+                        
+                        # All Others First Asset
+                        else:
+                            
+                            # btc
+                            _symbol_temp    = f"{_my_asset.get('asset')}BTC"
+                            _avg_price_temp = self.get_avg_price(_symbol_temp)
+                            if _avg_price_temp[0] == 'OK':
+                                _tot_btc_free = _tot_btc_free + _avg_price_temp[1]*Decimal(_my_asset.get('free'))
+                            else:
+                                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp[1])}")
+                        
+                            # Usdt
+                            _symbol_temp    = f"{_my_asset.get('asset')}USDT"
+                            _avg_price_temp = self.get_avg_price(_symbol_temp)
+                            if _avg_price_temp[0] == 'OK':
+                                _tot_usdt_free = _tot_usdt_free + _avg_price_temp[1]*_my_asset.get('free')
+                            else:
+                                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_wallet_balance',_inputs,_avg_price_temp[1])}")
+                         
+                         #print(chr(10))
+                        
+                        
+                 # Add Estimated Value BTC & USDT
+                _my_wallet.append({'tot_btc_free': _tot_btc_free , 'tot_usdt_free': _tot_usdt_free})
+                
                 self.response_tuple = ('OK', _my_wallet)
                 
             else:
@@ -238,16 +327,20 @@ class BinanceAPIClass:
         return(self.response_tuple)
     
     # Get Prezzo medio degli ultimi 5 minuti
-    def get_avg_price(self):
+    def get_avg_price(self, _symbol_input = None):
     
         # Prepare
         _price              = None
         _avg_price_response = None
-        _inputs             = self.symbol
         
         try:
-            _avg_price_response = self.binance_client_obj.get_avg_price(symbol=self.symbol)
-        
+            if _symbol_input is None:
+                _inputs             = self.symbol
+                _avg_price_response = self.binance_client_obj.get_avg_price(symbol=self.symbol)
+            else:
+                _inputs             = _symbol_input
+                _avg_price_response = self.binance_client_obj.get_avg_price(symbol=_symbol_input)
+            
             if _avg_price_response is not None:
                 _price = Decimal(_avg_price_response.get('price'))
                 self.response_tuple = ('OK', _price)

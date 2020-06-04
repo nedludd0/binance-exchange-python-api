@@ -11,6 +11,8 @@ from pprint import pprint
 import config_api
 from binance.client import Client
 _binance_client_obj = Client(config_api.API_KEY, config_api.API_SECRET)
+pprint(_binance_client_obj.get_avg_price(symbol='BNBBTC'))
+exit(0)
 """
 
 # Prepare
@@ -20,8 +22,8 @@ _what_fee       = 'taker'
 _what_bal       = 'buy'
 _size           = 100
 
-_binance_client_obj = BinanceAPIClass()
-#_binance_client_obj = BinanceAPIClass(_size, _symbol_first, _symbol_second)
+#_binance_client_obj = BinanceAPIClass()
+_binance_client_obj = BinanceAPIClass(_size, _symbol_first, _symbol_second)
 
 #print(f'{my_class.get_quantity_to_buy(_symbol_first, _symbol_second, _what_fee, _size ):.20f}')
 
@@ -33,15 +35,33 @@ _binance_client_obj = BinanceAPIClass()
 """
 _out = my_class.get_my_quantity_to_buy(_binance_client_obj,_symbol_first, _symbol_second, _what_fee, _size=100)
 """
+"""
+BTCBTC
+BTCUSDT
 
+BNBBTC
+BNBUSDT
+
+USDTBTC
+USDTUSDT
+"""
     
-_out = _binance_client_obj.get_rate_limits()
+#_out = _binance_client_obj.get_avg_price('BTCUSDT')
+
+_out = _binance_client_obj.get_my_wallet_balance()
+
 
 if _out[0] == 'OK':
     print(f"OK {_out[1]}")
 elif _out[0] == 'NOK':
     print(f"NOK {_out[1]}")
 
+for _coin in _out[1]:
+    if _coin.get('asset') is not None:
+        print(f"{_coin.get('free')} {_coin.get('asset')}") 
+
+print(f"tot_btc_free: {_coin.get('tot_btc_free')}")
+print(f"tot_usdt_free: {_coin.get('tot_usdt_free')}")
 
 """""""""""""""""""""
 General Endpoints
