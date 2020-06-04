@@ -1,2 +1,2 @@
 # binance-exchange-python-api
-use of the library sammchardy/python-binance
+use of the library https://github.com/sammchardy/python-binance
