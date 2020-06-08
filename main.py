@@ -8,12 +8,11 @@ def run(choose):
     symbol_first       = 'BTC'
     symbol_second      = 'USDT'
     symbol             = f"{symbol_first}{symbol_second}"
-    size               = 100
-    binance_client_obj = BinanceAPIClass(symbol_first, symbol_second, size)
+    binance_client_obj = BinanceAPIClass(symbol_first, symbol_second)
 
     # General Endpoints
     
-    if choose == 'AvgPriceSymbol':
+    if choose == '1':
         
         # Print Avg Price of Symbol
         _out = binance_client_obj.get_avg_price(symbol)
@@ -26,7 +25,7 @@ def run(choose):
 
     # Account Endpoints
     
-    elif choose == 'PrintMyWallet':
+    elif choose == '2':
         
         # Print My Wallet
         _out = binance_client_obj.get_my_wallet_balance()
@@ -35,12 +34,19 @@ def run(choose):
         elif _out[0] == 'NOK':
             print(f"NOK --> {_out[1]}")
         
-    elif choose == 'MakeOrderMarketSymbol':
+        print('-------------')
+        print('- Info RUN --')
+        print('-------------')        
+        print(f"symbol  : {symbol}")      
         
-        _choose = input("Choose buy or sell: ")
+    elif choose == '3':
+        
+        _choose             = input("Choose buy or sell: ")
+        _size               = input("Choose size %: ")        
+        _binance_client_obj = BinanceAPIClass(symbol_first, symbol_second, _size)
         
         # Make a Order
-        _out = binance_client_obj.create_order_spot('market', _choose)
+        _out = _binance_client_obj.create_order_spot('market', _choose)
 
         if _out[0] == 'OK':
             pprint(f"OK --> {_out[1]}")
@@ -48,18 +54,26 @@ def run(choose):
             print(f"NOK -->  {_out[1]}")
         
     else:
-
-        _out = binance_client_obj.get_my_quantity_to_buy('taker')
+        
+        _out = binance_client_obj.get_symbol_info_filter('LOT_SIZE',symbol)
         if _out[0] == 'OK':
-            pprint(f"OK --> {_out[1]:.20f}")
+            pprint(f"OK lot_size {chr(10)}{_out[1]}")
         elif _out[0] == 'NOK':
-            print(f"NOK -->  {_out[1]}")
+            print(f"NOK lot_size {chr(10)}{_out[1]}")
+        
+        print(chr(10))
+        
+        _out = binance_client_obj.get_symbol_info_filter('MIN_NOTIONAL',symbol)
+        if _out[0] == 'OK':
+            pprint(f"OK min_notional {chr(10)}{_out[1]}")
+        elif _out[0] == 'NOK':
+            print(f"NOK min_notional {chr(10)}{_out[1]}")
 
         #print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
 
 if __name__ == "__main__":
     
-    choose = input("Choose what to do (AvgPriceSymbol, PrintMyWallet, MakeOrderMarketSymbol): ") 
+    choose = input("Choose what to do (AvgPriceSymbol 1 , PrintMyWallet 2 , MakeOrderMarketSymbol 3): ") 
     
     run(choose)
