@@ -12,7 +12,7 @@ def run(choose):
 
     # General Endpoints
     
-    if choose == '1':
+    if choose == 1:
         
         # Print Avg Price of Symbol
         _out = binance_client_obj.get_avg_price(symbol)
@@ -25,7 +25,7 @@ def run(choose):
 
     # Account Endpoints
     
-    elif choose == '2':
+    elif choose == 2:
         
         # Print My Wallet
         _out = binance_client_obj.get_my_wallet_balance()
@@ -39,7 +39,7 @@ def run(choose):
         print('-------------')        
         print(f"symbol  : {symbol}")      
         
-    elif choose == '3':
+    elif choose == 3:
         
         _choose             = input("Choose buy or sell: ")
         _size               = input("Choose size %: ")        
@@ -54,7 +54,9 @@ def run(choose):
             print(f"NOK -->  {_out[1]}")
         
     else:
-        
+
+        # DEBUG
+        """
         _out = binance_client_obj.get_symbol_info_filter('LOT_SIZE',symbol)
         if _out[0] == 'OK':
             pprint(f"OK lot_size {chr(10)}{_out[1]}")
@@ -68,12 +70,13 @@ def run(choose):
             pprint(f"OK min_notional {chr(10)}{_out[1]}")
         elif _out[0] == 'NOK':
             print(f"NOK min_notional {chr(10)}{_out[1]}")
-
-        #print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
+        """
+        
+        print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
 
 if __name__ == "__main__":
     
     choose = input("Choose what to do (AvgPriceSymbol 1 , PrintMyWallet 2 , MakeOrderMarketSymbol 3): ") 
     
-    run(choose)
+    run(int(choose))
