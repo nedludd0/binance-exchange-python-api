@@ -49,7 +49,7 @@ def run(choose):
         _out = _binance_client_obj.create_order_spot('market', _choose)
 
         if _out[0] == 'OK':
-            pprint(f"OK --> {_out[1]}")
+            print(f"OK --> {_out[1]}")
         elif _out[0] == 'NOK':
             print(f"NOK -->  {_out[1]}")
         

@@ -755,3 +755,73 @@ class BinanceAPIClass:
         }
         """
     
+    # Format Order Spot Market Result
+    def format_order_spot_market_result(self,_result):
+        
+        # Prepare
+        _inputs         = f"{_result}"        
+        decimal.getcontext().prec = 8
+        
+        # Choose Actions
+        if _result.get('side').upper() == 'BUY':
+            _temp1 = "Quantità Comprata"
+            _temp2 = "Costo"
+        elif _result.get('side').upper() == 'SELL':
+            _temp1 = "Quantità Venduta"
+            _temp2 = "Ricavo"
+        else:
+            self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,Side unknown: _result.get('side').upper()}")
+            return(self.response_tuple)
+        
+        # Format Date
+        _date = timestamp_formatter(_result.get('transactTime'))
+        
+        # Build Price & Fee
+        _price          = 0
+        _qty            = 0
+        _price_qty      = 0
+        _price_qty_tot  = 0
+        _qty_tot        = 0
+        _price_avg      = 0
+        _fee            = 0
+        _fee_symbol     = None
+        
+        for _fill in _result.get('fills'):
+            # Get & Trasform & Cumulate
+            if _fill.get('price') is not None:
+                _price          = decimal.Decimal(_fill.get('price'))
+            if _fill.get('qty') is not None:
+                _qty            = decimal.Decimal(_fill.get('qty'))
+            if _fill.get('commission') is not None:
+                _fee            = _fee + decimal.Decimal(_fill.get('commission'))
+            _fee_symbol     = _fill.get('commissionAsset')
+            # Calculate
+            _price_qty      = _price * _qty
+            _price_qty_tot  = _price_qty + _price_qty
+            _qty_tot        = _qty + _qty
+        
+        # Weighted average - Media Ponderata
+        if _price_qty_tot != 0 and _qty_tot != 0:
+            _price_avg = _price_qty_tot / _qty_tot 
+        
+        # Build Message
+        _header = "ESITO"
+        _row1   = f"Data: {_date}"
+        _row2   = f"Simbolo: {_result.get('symbol')}"
+        _row3   = f"Tipo: {_result.get('type')}"
+        _row4   = f"Side: {_result.get('side')}"
+        _row5   = f"Prezzo: {_price_avg}"
+        _row6   = f"Fee pagate in {_fee_symbol}: {_fee}"
+        _row7   = f"{_temp1}: {decimal.Decimal(_result.get('executedQty'))}"
+        _row8   = f"{_temp2}: {decimal.Decimal(_result.get('cummulativeQuoteQty'))}"        
+        _row9   = f"Status: {_result.get('status')}"
+        _row10  = f"Order Id: {_result.get('orderId')}"
+        
+        _message =  f"{_header} {chr(10)}"\
+                    f"{_row1} {chr(10)}{_row2} {chr(10)}{_row3} {chr(10)}"\
+                    f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"\
+                    f"{_row7} {chr(10)}{_row8} {chr(10)}{_row9} {chr(10)}{_row10}"
+        
+        self.response_tuple = ('OK', _message)
+        
+        return(self.response_tuple)
