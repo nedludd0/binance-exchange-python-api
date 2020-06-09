@@ -786,24 +786,33 @@ class BinanceAPIClass:
         _fee            = 0
         _fee_symbol     = None
         
-        for _fill in _result.get('fills'):
-            # Get & Trasform & Cumulate
-            if _fill.get('price') is not None:
-                _price          = decimal.Decimal(_fill.get('price'))
-            if _fill.get('qty') is not None:
-                _qty            = decimal.Decimal(_fill.get('qty'))
-            if _fill.get('commission') is not None:
-                _fee            = _fee + decimal.Decimal(_fill.get('commission'))
-            _fee_symbol     = _fill.get('commissionAsset')
-            # Calculate
-            _price_qty      = _price * _qty
-            _price_qty_tot  = _price_qty + _price_qty
-            _qty_tot        = _qty + _qty
+        if _result.get('fills') is not None:
+            
+            for _fill in _result.get('fills'):
+            
+                # Get & Trasform & Cumulate
+                if _fill.get('price') is not None:
+                    _price          = decimal.Decimal(_fill.get('price'))
+                if _fill.get('qty') is not None:
+                    _qty            = decimal.Decimal(_fill.get('qty'))
+                if _fill.get('commission') is not None:
+                    _fee            = _fee + decimal.Decimal(_fill.get('commission'))
+                _fee_symbol     = _fill.get('commissionAsset')
+            
+                # Calculate
+                _price_qty      = _price * _qty
+                _price_qty_tot  = _price_qty + _price_qty
+                _qty_tot        = _qty + _qty
         
-        # Weighted average - Media Ponderata
-        if _price_qty_tot != 0 and _qty_tot != 0:
-            _price_avg = _price_qty_tot / _qty_tot 
-        
+            # Weighted average - Media Ponderata
+            if _price_qty_tot != 0 and _qty_tot != 0:
+                _price_avg = _price_qty_tot / _qty_tot 
+                
+        else:
+            self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs, 'Get Fills is None'}")
+            return(self.response_tuple)
+
+
         # Build Message
         _header = "ESITO"
         _row1   = f"Data: {_date}"
@@ -822,6 +831,6 @@ class BinanceAPIClass:
                     f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"\
                     f"{_row7} {chr(10)}{_row8} {chr(10)}{_row9} {chr(10)}{_row10}"
         
-        self.response_tuple = ('OK', _message)
         
+        self.response_tuple = ('OK', _message)
         return(self.response_tuple)
