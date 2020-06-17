@@ -34,7 +34,6 @@ class BinanceAPIClass:
     """""""""""""""""""""
     Utility
     """""""""""""""""""""
-
     # My Default Timezone
     def default_timezone(self):
         _tz = timezone('Europe/Rome')
@@ -64,7 +63,6 @@ class BinanceAPIClass:
             _msg_error = f"{self.my_time_now(True)} {_type} on function {_func} : MESSAGE: {_msg} {chr(10)}"
             
         return(_msg_error)
-
 
     # Truncate _qta_start to the largest multiple of _step_size for LOT_SIZE
     def truncate_by_step_size(self, _qta_start, _step_size):
@@ -145,7 +143,6 @@ class BinanceAPIClass:
             self.response_tuple = ('NOK',  f"{ self.my_log('Exception','get_rate_limits',_inputs,traceback.format_exc(2))}")
         
         return(self.response_tuple)
-
 
     # Get My Open Orders
     def get_my_openorders(self, _symbol = None):
@@ -722,7 +719,7 @@ class BinanceAPIClass:
                                                                 quantity    = _quantity[1])
                 self.response_tuple = ('OK', _order)
                 
-            except Exception as e:
+            except:
                 self.response_tuple = ('NOK',  f"{ self.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
             
         elif _type == 'limit':   
@@ -740,7 +737,7 @@ class BinanceAPIClass:
                                                                 price       = _price)
                 self.response_tuple = ('OK', _order)
                 
-            except Exception as e:
+            except:
                 self.response_tuple = ('NOK',  f"{ self.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
                                
         else:
@@ -923,4 +920,23 @@ class BinanceAPIClass:
                         f"{_row7} {chr(10)}{_row8} {chr(10)}"                        
    
         self.response_tuple = ('OK', _message)
+        return(self.response_tuple)
+
+    # Cancel a Order Spot
+    def cancel_order_spot(self, _symbol, _orderid):
+        
+        # Prepare
+        _inputs = f"{_symbol}|{_orderid}"
+        _result = None
+        
+        try:
+            
+            _result = self.binance_client_obj.cancel_order( symbol = _symbol, orderId =_orderid)
+            
+            self.response_tuple = ('OK', _result)
+        
+        except:
+        
+            self.response_tuple = ('NOK',  f"{ self.my_log('Exception','cancel_order_spot',_inputs,traceback.format_exc())}")
+        
         return(self.response_tuple)
