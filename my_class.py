@@ -145,6 +145,48 @@ class BinanceAPIClass:
             self.response_tuple = ('NOK',  f"{ self.my_log('Exception','get_rate_limits',_inputs,traceback.format_exc(2))}")
         
         return(self.response_tuple)
+
+
+    # Get My Open Orders
+    def get_my_openorders(self, _symbol = None):
+
+        # Prepare
+        _inputs         = f"{_symbol}"
+        _dict           = {}
+        _list_result    = []
+        _result_temp    = 'NOK'
+        
+        try:
+            if _symbol is None:
+                _my_openorders  = self.binance_client_obj.get_open_orders()
+                _result_temp    = 'OK'
+            else:
+                _my_openorders  = self.binance_client_obj.get_open_orders(symbol=_symbol)
+                _result_temp    = 'OK'
+        except:
+        
+            self.response_tuple = ('NOK',  f"{ self.my_log('Exception','get_my_openorders',_inputs,traceback.format_exc(2))}")
+            
+        if _result_temp == 'OK':
+            
+            # Format Output
+            for _dict in _my_openorders:
+       
+                _row1   = f"Order Id: {_dict.get('orderId')}"
+                _row2   = f"Type: {_dict.get('type')}"                
+                _row3   = f"Symbol: {_dict.get('symbol')}"
+                _row4   = f"Side: {_dict.get('side')}" 
+                _row5   = f"Price: {_dict.get('price')}"
+                _row6   = f"Quantity: {_dict.get('origQty')}"
+        
+                _message =  f"{_row1} {chr(10)}{_row2} {chr(10)}{_row3} {chr(10)}"\
+                            f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"\
+                
+                _list_result.append(_message) 
+            
+            self.response_tuple = ('OK', _list_result)
+            
+        return(self.response_tuple)
     
     # Get My Balance
     def get_my_balance(self):
@@ -451,7 +493,7 @@ class BinanceAPIClass:
         symbol_min_qty          = None
         symbol_min_notional     = None        
         symbol_fee              = None
-        symbol_avg_price        = None
+        symbol_price            = None
         symbol_bal_second_size  = None
         symbol_fee_perc         = None
         quantity_start          = None
@@ -480,34 +522,43 @@ class BinanceAPIClass:
         else:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_symbol_min_notional[1])}")
             return(self.response_tuple)
-        
-        # Get Symbol Avg Price
-        if _symbol_fee[0] == 'OK':
-            _symbol_avg_price = self.get_avg_price()
-        else:
-            self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_symbol_fee[1])}")
-            return(self.response_tuple)
+
+        # Get Symbol Price or Symbol Avg Price
+        if _type == 'market':
+            
+            # Get Symbol Avg Price
+            if _symbol_fee[0] == 'OK':
+                _symbol_price = self.get_avg_price()
+            else:
+                self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_symbol_fee[1])}")
+                return(self.response_tuple)
+                
+        elif _type == 'limit' and _price is not None:
+            
+            # SET OK only for the following if 
+            # -> in case of order limit the price is a input so it is useless to calculate the average price 
+            _symbol_price = tuple( ( 'OK' , Decimal(_price) ) )
         
         # Calculate Quantity End
-        if _symbol_avg_price[0] == 'OK':
+        if _symbol_price[0] == 'OK':
             
             symbol_bal_second   = _symbol_bal_second[1]
             symbol_step_size    = _symbol_lot_size[1].get('LOT_SIZE_step_size')
             symbol_min_qty      = _symbol_lot_size[1].get('LOT_SIZE_minQty')
             symbol_min_notional = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
             symbol_fee          = _symbol_fee[1]        
-            symbol_avg_price    = _symbol_avg_price[1]
+            symbol_price        = _symbol_price[1]
             
             symbol_bal_second_size  = symbol_bal_second / 100 *  Decimal(self.size)
             symbol_fee_perc         = (100 - symbol_fee) / 100 
-            quantity_start          = (symbol_bal_second_size / symbol_avg_price) * symbol_fee_perc
+            quantity_start          = (symbol_bal_second_size / symbol_price) * symbol_fee_perc
             quantity_end            = self.truncate_by_step_size(quantity_start, symbol_step_size)
             if quantity_end[0] == 'OK':
                 
                 quantity_temp = quantity_end[1]
                 if quantity_temp > symbol_min_qty:
                     
-                    if (symbol_avg_price * quantity_temp) > symbol_min_notional:
+                    if (symbol_price * quantity_temp) > symbol_min_notional:
                         
                         if self.size == 100:
                             quantity_temp = quantity_temp - symbol_step_size # To avoid "Account has insufficient balance for requested action" if there is a pump in progress
@@ -515,7 +566,7 @@ class BinanceAPIClass:
                         self.response_tuple = ('OK', quantity_temp)
                     
                     else:
-                        _msg                = f"Price * Quantity (= {quantity_start*symbol_avg_price:.10f}) to make BUY is not > Symbol Min Notional Qty (= {symbol_min_notional})"
+                        _msg                = f"Quantity * Price (= {quantity_start*symbol_price:.10f}) to make BUY is not > Symbol Min Notional Qty (= {symbol_min_notional})"
                         self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
 
                 else:
@@ -523,7 +574,7 @@ class BinanceAPIClass:
                     self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
 
         else:
-            self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_symbol_avg_price[1])}")
+            self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_symbol_price[1])}")
     
         return(self.response_tuple)
 
@@ -537,7 +588,7 @@ class BinanceAPIClass:
         symbol_step_size        = None
         symbol_min_qty          = None
         symbol_min_notional     = None
-        symbol_avg_price        = None        
+        symbol_price            = None        
         symbol_bal_first        = None
         symbol_bal_first_size   = None
         quantity_start          = None
@@ -574,8 +625,7 @@ class BinanceAPIClass:
             
             # SET OK only for the following if 
             # -> in case of order limit the price is a input so it is useless to calculate the average price 
-            _symbol_price[0] = 'OK'
-            _symbol_price[1] = _price
+            _symbol_price = tuple( ( 'OK' , Decimal(_price) ) )
 
         else:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,'_type unknown or _price is None')}")
@@ -601,7 +651,7 @@ class BinanceAPIClass:
                     if (symbol_price * quantity_temp) > symbol_min_notional:
                         self.response_tuple = ('OK', quantity_temp)
                     else:
-                        _msg                = f"Price * Quantity (= {quantity_start*symbol_price:.10f}) to make SELL is not > Symbol Min Notional Qty (= {symbol_min_notional})"
+                        _msg                = f"Quantity * Price (= {quantity_start*symbol_price:.10f}) to make SELL is not > Symbol Min Notional Qty (= {symbol_min_notional})"
                         self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_msg)}")
                         
                 else:
@@ -630,8 +680,9 @@ class BinanceAPIClass:
             _what_fee       = 'taker' # --> I'm going to Market so it's a taker
 
         elif _type == 'limit':
-            _client_type    = self.binance_client_obj.ORDER_TYPE_LIMIT
-            _what_fee       = 'maker' # --> I'm going to Price so it's a maker     
+            _client_type        = self.binance_client_obj.ORDER_TYPE_LIMIT
+            _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
+            _what_fee           = 'maker' # --> I'm going to Price so it's a maker     
          
         else:
             
@@ -684,6 +735,7 @@ class BinanceAPIClass:
                 _order = self.binance_client_obj.create_order(  symbol      = self.symbol,
                                                                 side        = _client_side,
                                                                 type        = _client_type,
+                                                                timeInForce = _client_timeinforce,
                                                                 quantity    = _quantity[1],
                                                                 price       = _price)
                 self.response_tuple = ('OK', _order)
@@ -701,7 +753,8 @@ class BinanceAPIClass:
 
     
         """
-        OUTPUT --> _order
+        
+        >>> OUTPUT MARKET <<<<
         
         Minimize: 
         
@@ -728,25 +781,55 @@ class BinanceAPIClass:
                             'commissionAsset': 'BNB', 
                             'tradeId': 61069267 }   ]
         }
+        
+        >>> OUTPUT LIMIT <<<<
+        
+        Minimize:
+        
+        {'symbol': 'BTCUSDT', 'orderId': 2499415863, 'orderListId': -1, 'clientOrderId': 'RLVk6VD4oVuSJA0Ooc1h43', 'transactTime': 1592390815808, 'price': '9488.00000000', 'origQty': '0.00176300', 'executedQty': '0.00000000', 'cummulativeQuoteQty': '0.00000000', 'status': 'NEW', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'SELL', 'fills': []}
+
+        Readable:
+
+        {   'symbol': 'BTCUSDT', 
+            'orderId': 2499415863, 
+            'orderListId': -1, 
+            'clientOrderId': 'RLVk6VD4oVuSJA0Ooc1h43', 
+            'transactTime': 1592390815808, 
+            'price': '9488.00000000', 
+            'origQty': '0.00176300', 
+            'executedQty': '0.00000000', 
+            'cummulativeQuoteQty': '0.00000000', 
+            'status': 'NEW', 
+            'timeInForce': 'GTC', 
+            'type': 'LIMIT', 
+            'side': 'SELL', 
+            'fills': []
+        }
+
         """
-    
-    # Format Order Spot Market Result
-    def format_order_spot_market_result(self,_result):
+        """
+        ------------
+        -- RESULT --
+        ------------
+        Data: 2020-06-17 12:40:48 
+        Simbolo: BTCUSDT 
+        Tipo: LIMIT 
+        Side: SELL 
+        Prezzo: 0 
+        Fee pagate in None: 0 
+        Quantità Venduta: 0E-8 
+        Ricavo: 0E-8 
+        Status: NEW 
+        Order Id: 2499390785
+        """
+
+    # Format Order Spot Result
+    def format_order_spot_result(self, _type, _result):
         
         # Prepare
-        _inputs         = f"{_result}"        
-        getcontext().prec = 8
+        _inputs             = f"{_type}|{_result}"        
+        getcontext().prec   = 8
         
-        # Choose Actions
-        if _result.get('side').upper() == 'BUY':
-            _temp1 = "Quantità Comprata"
-            _temp2 = "Costo"
-        elif _result.get('side').upper() == 'SELL':
-            _temp1 = "Quantità Venduta"
-            _temp2 = "Ricavo"
-        else:
-            self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,'Side unknown')}")
-            return(self.response_tuple)
         
         # Format Date
         _date = self.timestamp_formatter(_result.get('transactTime'))
@@ -761,7 +844,7 @@ class BinanceAPIClass:
         _fee            = 0
         _fee_symbol     = None
         
-        if _result.get('fills') is not None:
+        if _result.get('status') == 'FILLED':
             
             for _fill in _result.get('fills'):
             
@@ -782,35 +865,62 @@ class BinanceAPIClass:
             # Weighted average - Media Ponderata
             if _price_qty_tot != 0 and _qty_tot != 0:
                 _price_avg = _price_qty_tot / _qty_tot 
-                
+
+        # Build Rows
+        _row1   = f"Date: {_date}"
+        _row2   = f"Status: {_result.get('status')}"        
+        _row3   = f"Order Id: {_result.get('orderId')}"
+        _row4   = f"Type: {_result.get('type')}"                
+        _row5   = f"Symbol: {_result.get('symbol')}"
+        _row6   = f"Side: {_result.get('side')}"      
+        
+        if _type == 'market':
+
+            if _result.get('side').upper() == 'BUY':
+                _temp1 = "Quantity Buyed"
+                _temp2 = "Cost"
+            elif _result.get('side').upper() == 'SELL':
+                _temp1 = "Quantity Sold"
+                _temp2 = "Revenue"
+            else:
+                self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,'Side unknown')}")
+                return(self.response_tuple)
+            
+            _row7 = f"Price: {_price_avg}"
+            _row8 = f"Fee paid in {_fee_symbol}: {_fee}"
+
+            if _result.get('executedQty') is not None:
+                _row9   = f"{_temp1}: {Decimal(_result.get('executedQty'))}"
+            else:
+                _row9   = f"{_temp1}: {_result.get('executedQty')}"
+            if _result.get('cummulativeQuoteQty') is not None:
+                _row10   = f"{_temp2}: {Decimal(_result.get('cummulativeQuoteQty'))}"            
+            else:
+                _row10   = f"{_temp2}: {_result.get('cummulativeQuoteQty')}"
+        
+        elif _type == 'limit':
+            
+            _row7 = f"Price: {_result.get('price')}"
+            _row8 = f"Quantity: {_result.get('origQty')}"
+
         else:
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot_market',_inputs, 'Get Fills is None')}")
+            
+            self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot_market',_inputs,'Type unknown')}")
             return(self.response_tuple)
-
-
+        
         # Build Message
-        #_header = "**ESITO**"
-        _row1   = f"Data: {_date}"
-        _row2   = f"Simbolo: {_result.get('symbol')}"
-        _row3   = f"Tipo: {_result.get('type')}"
-        _row4   = f"Side: {_result.get('side')}"
-        _row5   = f"Prezzo: {_price_avg}"
-        _row6   = f"Fee pagate in {_fee_symbol}: {_fee}"
-        if _result.get('executedQty') is not None:
-            _row7   = f"{_temp1}: {Decimal(_result.get('executedQty'))}"
-        else:
-            row7   = f"{_temp1}: {_result.get('executedQty')}"
-        if _result.get('cummulativeQuoteQty') is not None:
-            _row8   = f"{_temp2}: {Decimal(_result.get('cummulativeQuoteQty'))}"            
-        else:
-            _row8   = f"{_temp2}: {_result.get('cummulativeQuoteQty')}"
-        _row9   = f"Status: {_result.get('status')}"
-        _row10  = f"Order Id: {_result.get('orderId')}"
-        
-        _message =  f"{_row1} {chr(10)}{_row2} {chr(10)}{_row3} {chr(10)}"\
-                    f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"\
-                    f"{_row7} {chr(10)}{_row8} {chr(10)}{_row9} {chr(10)}{_row10}"
-        
-        
+        if _type == 'market':
+            
+            _message =  f"{_row1} {chr(10)}{_row2} {chr(10)}{_row3} {chr(10)}"\
+                        f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"\
+                        f"{_row7} {chr(10)}{_row8} {chr(10)}"\
+                        f"{_row9} {chr(10)}{_row10}"
+                        
+        elif _type == 'limit':
+            
+            _message =  f"{_row1} {chr(10)}{_row2} {chr(10)}{_row3} {chr(10)}"\
+                        f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"\
+                        f"{_row7} {chr(10)}{_row8} {chr(10)}"                        
+   
         self.response_tuple = ('OK', _message)
         return(self.response_tuple)

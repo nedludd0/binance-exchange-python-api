@@ -17,10 +17,18 @@ def run(choose):
         # Print Avg Price of Symbol
         _out = binance_client_obj.get_avg_price(symbol)
         if _out[0] == 'OK':
-            print(symbol)
-            pprint(f"OK --> {_out[1]}")
+            print(f"{chr(10)}------------")
+            print(f"-- RESULT --")
+            print(f"------------") 
+            print(f"Symbol: {symbol}")
+            print(f"Avg Price: {_out[1]}")            
+            print(f"{chr(10)}")
         elif _out[0] == 'NOK':
-            print(f"NOK --> {_out[1]}")
+            print(f"{chr(10)}-----------")
+            print(f"-- ERROR --")
+            print(f"-----------") 
+            print(f"{_out[1]}")
+            print(f"{chr(10)}")
 
 
     # Account Endpoints
@@ -32,7 +40,11 @@ def run(choose):
         if _out[0] == 'OK':
             binance_client_obj.print_my_balance_result(_out[1])
         elif _out[0] == 'NOK':
-            print(f"NOK --> {_out[1]}")
+            print(f"{chr(10)}-----------")
+            print(f"-- ERROR --")
+            print(f"-----------") 
+            print(f"{_out[1]}")
+            print(f"{chr(10)}")
         
         print('-------------')
         print('- Info RUN --')
@@ -55,11 +67,13 @@ def run(choose):
         _out = _binance_client_obj.create_order_spot(_type, _side, _price)
 
         if _out[0] == 'OK':
-            _formatted_output = binance_client_obj.format_order_spot_market_result(_out[1])
+            _formatted_output_temp = binance_client_obj.format_order_spot_result(_type, _out[1])
+            _formatted_output      = _formatted_output_temp[1] 
+            #_formatted_output       = _out[1]
             print(f"{chr(10)}------------")
             print(f"-- RESULT --")
             print(f"------------")            
-            print(f"{_formatted_output[1]}")
+            print(f"{_formatted_output}")
             print(f"{chr(10)}")            
         elif _out[0] == 'NOK':
             print(f"{chr(10)}-----------")
@@ -72,7 +86,7 @@ def run(choose):
               
         _binance_client_obj = BinanceAPIClass()
         
-        # Make a Order
+        # Get Rate Limits
         _out = _binance_client_obj.get_rate_limits()
 
         if _out[0] == 'OK':
@@ -80,32 +94,34 @@ def run(choose):
         elif _out[0] == 'NOK':
             print(f"NOK -->  {_out[1]}")
             
+    elif choose == 5:
+              
+        _binance_client_obj = BinanceAPIClass()
+        
+        # Get My Openorders
+        _out = _binance_client_obj.get_my_openorders()
 
-
+        if _out[0] == 'OK':
+            print(f"{chr(10)}------------")
+            print(f"-- RESULT --")
+            print(f"------------{chr(10)}")  
+            for _dict in _out[1]:          
+                print(f"{_dict}{chr(10)}")
+                              
+        elif _out[0] == 'NOK':
+            print(f"{chr(10)}-----------")
+            print(f"-- ERROR --")
+            print(f"-----------") 
+            print(f"{_out[1]}")
+            print(f"{chr(10)}")
+            
     else:
 
-        # DEBUG
-        """
-        _out = binance_client_obj.get_symbol_info_filter('LOT_SIZE',symbol)
-        if _out[0] == 'OK':
-            pprint(f"OK lot_size {chr(10)}{_out[1]}")
-        elif _out[0] == 'NOK':
-            print(f"NOK lot_size {chr(10)}{_out[1]}")
-        
-        print(chr(10))
-        
-        _out = binance_client_obj.get_symbol_info_filter('MIN_NOTIONAL',symbol)
-        if _out[0] == 'OK':
-            pprint(f"OK min_notional {chr(10)}{_out[1]}")
-        elif _out[0] == 'NOK':
-            print(f"NOK min_notional {chr(10)}{_out[1]}")
-        """
-        
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
 
 if __name__ == "__main__":
     
-    choose = input(f"{chr(10)}CHOOSE WHAT TO DO (AvgPriceSymbol 1 , PrintMyBalance 2 , MakeOrderMarketSymbol 3, SeeRateLimit 4): ") 
+    choose = input(f"{chr(10)}CHOOSE WHAT TO DO (AvgPriceSymbol 1 , PrintMyBalance 2 , MakeOrderMarketSymbol 3, SeeRateLimit 4. GetAllOpenOrders 5): ") 
     
     run(int(choose))
