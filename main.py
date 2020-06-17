@@ -41,20 +41,32 @@ def run(choose):
         
     elif choose == 3:
         
-        _choose             = input("Choose buy or sell: ")
-        _size               = input("Choose size %: ")        
+        print(f"{chr(10)}------------")        
+        print(f"-- INPUTs --")
+        print(f"------------")        
+        _type               = input("Choose TYPE (market or limit): ")
+        _price              = input("Choose PRICE (None if Market or price if Limit): ")        
+        _side               = input("Choose SIDE (buy or sell): ")
+        _size               = input("Choose SIZE %: ")        
         _binance_client_obj = BinanceAPIClass(symbol_first, symbol_second, _size)
+        print(f"{chr(10)}")
         
         # Make a Order
-        _out = _binance_client_obj.create_order_spot('market', _choose)
+        _out = _binance_client_obj.create_order_spot(_type, _side, _price)
 
         if _out[0] == 'OK':
             _formatted_output = binance_client_obj.format_order_spot_market_result(_out[1])
-            print(f"{chr(10)}{chr(10)}")
+            print(f"{chr(10)}------------")
+            print(f"-- RESULT --")
+            print(f"------------")            
             print(f"{_formatted_output[1]}")
-            print(f"{chr(10)}{chr(10)}")            
+            print(f"{chr(10)}")            
         elif _out[0] == 'NOK':
+            print(f"{chr(10)}-----------")
+            print(f"-- ERROR --")
+            print(f"-----------") 
             print(f"{_out[1]}")
+            print(f"{chr(10)}")
 
     elif choose == 4:
               
@@ -94,6 +106,6 @@ def run(choose):
 
 if __name__ == "__main__":
     
-    choose = input("Choose what to do (AvgPriceSymbol 1 , PrintMyBalance 2 , MakeOrderMarketSymbol 3, SeeRateLimit 4): ") 
+    choose = input(f"{chr(10)}CHOOSE WHAT TO DO (AvgPriceSymbol 1 , PrintMyBalance 2 , MakeOrderMarketSymbol 3, SeeRateLimit 4): ") 
     
     run(int(choose))
