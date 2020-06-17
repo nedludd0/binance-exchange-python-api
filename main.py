@@ -28,9 +28,9 @@ def run(choose):
     elif choose == 2:
         
         # Print My Wallet
-        _out = binance_client_obj.get_my_wallet_balance()
+        _out = binance_client_obj.get_my_balance()
         if _out[0] == 'OK':
-            binance_client_obj.print_my_wallet_balance_result(_out[1])
+            binance_client_obj.print_my_balance_result(_out[1])
         elif _out[0] == 'NOK':
             print(f"NOK --> {_out[1]}")
         
@@ -49,10 +49,27 @@ def run(choose):
         _out = _binance_client_obj.create_order_spot('market', _choose)
 
         if _out[0] == 'OK':
+            _formatted_output = binance_client_obj.format_order_spot_market_result(_out[1])
+            print(f"{chr(10)}{chr(10)}")
+            print(f"{_formatted_output[1]}")
+            print(f"{chr(10)}{chr(10)}")            
+        elif _out[0] == 'NOK':
+            print(f"{_out[1]}")
+
+    elif choose == 4:
+              
+        _binance_client_obj = BinanceAPIClass()
+        
+        # Make a Order
+        _out = _binance_client_obj.get_rate_limits()
+
+        if _out[0] == 'OK':
             print(f"OK --> {_out[1]}")
         elif _out[0] == 'NOK':
             print(f"NOK -->  {_out[1]}")
-        
+            
+
+
     else:
 
         # DEBUG
@@ -77,6 +94,6 @@ def run(choose):
 
 if __name__ == "__main__":
     
-    choose = input("Choose what to do (AvgPriceSymbol 1 , PrintMyWallet 2 , MakeOrderMarketSymbol 3): ") 
+    choose = input("Choose what to do (AvgPriceSymbol 1 , PrintMyBalance 2 , MakeOrderMarketSymbol 3, SeeRateLimit 4): ") 
     
     run(int(choose))
