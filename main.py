@@ -75,31 +75,40 @@ def run(choose):
     # MakeOrder
     elif choose == 4:
 
-        _price = None
+        _price  = None
+        _stop   = None
         
         # Inputs
         print(f"{chr(10)}------------")        
         print(f"-- INPUTs --")
         print(f"------------")        
-        _type               = input("Choose TYPE (market or limit): ")
-        if _type == 'limit':
-            _price          = input("Choose PRICE (None if Market or value if Limit): ")        
-        _side               = input("Choose SIDE (buy or sell): ")
-        _size               = input("Choose SIZE %: ")        
+        _type               = input("Choose TYPE (market 1, limit 2 or stop_limit 3): ")
+        if int(_type) == 1:
+            _type = 'market'
+        elif int(_type) == 2:
+            _type   = 'limit'
+            _price  = input("Choose PRICE: ")
+        elif int(_type) == 3:
+            _type   = 'stop_limit'
+            _stop   = input("Choose STOP: ")             
+            _price  = input("Choose PRICE: ")                                       
+        _side = input("Choose SIDE (buy or sell): ")
+        _size = input("Choose SIZE %: ")        
         print(f"{chr(10)}")
         
         # Make Order
         _binance_client_obj = BinanceAPIClass(symbol_first, symbol_second, _size)
-        _out                = _binance_client_obj.create_order_spot(_type, _side, _price)
+        _out                = _binance_client_obj.create_order_spot(_type, _side, _price, _stop)
 
         if _out[0] == 'OK':
-            _formatted_output_temp = binance_client_obj.format_order_spot_result(_type, _out[1])
-            _formatted_output      = _formatted_output_temp[1] 
-            #_formatted_output       = _out[1]
+            #_formatted_output_temp = _binance_client_obj.format_order_spot_result(_type, _out[1])
+            #_formatted_output      = _formatted_output_temp[1] 
+            _formatted_output      = _out[1]
             print(f"{chr(10)}------------")
             print(f"-- RESULT --")
             print(f"------------")            
-            print(f"{_formatted_output}")
+            #print(f"{_formatted_output}")
+            print(_formatted_output)            
             print(f"{chr(10)}")            
         elif _out[0] == 'NOK':
             print(f"{chr(10)}-----------")

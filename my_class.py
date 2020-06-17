@@ -152,6 +152,9 @@ class BinanceAPIClass:
         _dict           = {}
         _list_result    = []
         _result_temp    = 'NOK'
+        _type           = None
+        _type_temp      = None
+        _row7           = None
         
         try:
             if _symbol is None:
@@ -161,24 +164,36 @@ class BinanceAPIClass:
                 _my_openorders  = self.binance_client_obj.get_open_orders(symbol=_symbol)
                 _result_temp    = 'OK'
         except:
-        
             self.response_tuple = ('NOK',  f"{ self.my_log('Exception','get_my_openorders',_inputs,traceback.format_exc(2))}")
             
         if _result_temp == 'OK':
             
             # Format Output
             for _dict in _my_openorders:
-       
+                
+                _type_temp = _dict.get('type').upper()
+                
+                if _type_temp == 'LIMIT':
+                    _type   = 'Limit'
+                elif _type_temp == 'STOP_LOSS_LIMIT':
+                    _type   = 'Stop-Limit'
+                    _row7   = f"Stop: {_dict.get('stopPrice')}"          
+                    
                 _row1   = f"Order Id: {_dict.get('orderId')}"
-                _row2   = f"Type: {_dict.get('type')}"                
+                _row2   = f"Type: {_type}"                
                 _row3   = f"Symbol: {_dict.get('symbol')}"
                 _row4   = f"Side: {_dict.get('side')}" 
-                _row5   = f"Price: {_dict.get('price')}"
-                _row6   = f"Quantity: {_dict.get('origQty')}"
-        
-                _message =  f"{_row1} {chr(10)}{_row2} {chr(10)}{_row3} {chr(10)}"\
-                            f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"\
-                
+                _row5   = f"Quantity: {_dict.get('origQty')}"                
+                _row6   = f"Price: {_dict.get('price')}"
+                                
+                if _row7 is None:
+                    _message =  f"{_row1} {chr(10)}{_row2} {chr(10)}{_row3} {chr(10)}"\
+                                f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"
+                else:
+                    _message =  f"{_row1} {chr(10)}{_row2} {chr(10)}{_row3} {chr(10)}"\
+                                f"{_row4} {chr(10)}{_row5} {chr(10)}{_row6} {chr(10)}"\
+                                f"{_row7}"
+                                
                 _list_result.append(_message) 
             
             self.response_tuple = ('OK', _list_result)
@@ -530,7 +545,7 @@ class BinanceAPIClass:
                 self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_symbol_fee[1])}")
                 return(self.response_tuple)
                 
-        elif _type == 'limit' and _price is not None:
+        elif (_type == 'limit' or _type == 'stop_limit') and _price is not None:
             
             # SET OK only for the following if 
             # -> in case of order limit the price is a input so it is useless to calculate the average price 
@@ -618,7 +633,7 @@ class BinanceAPIClass:
                 self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_sell',_inputs,_symbol_min_notional[1])}")
                 return(self.response_tuple)
                 
-        elif _type == 'limit' and _price is not None:
+        elif (_type == 'limit' or _type == 'stop_limit') and _price is not None:
             
             # SET OK only for the following if 
             # -> in case of order limit the price is a input so it is useless to calculate the average price 
@@ -664,14 +679,13 @@ class BinanceAPIClass:
     Binance Order Functions
     """""""""""""""""""""
     # Create a Order Spot
-    def create_order_spot(self, _type, _side, _price):
+    def create_order_spot(self, _type, _side, _price, _stop):
         
         # Prepare
-        _inputs         = f"{_type}|{_side}|{_price}|{self.symbol_first}|{self.symbol_second}|{self.size}"
+        _inputs         = f"{_type}|{_side}|{_price}|{_stop}|{self.symbol_first}|{self.symbol_second}|{self.size}"
         _quantity       = None
 
         # Choose TYPE & FEE
-
         if _type == 'market':
             _client_type    = self.binance_client_obj.ORDER_TYPE_MARKET
             _what_fee       = 'taker' # --> I'm going to Market so it's a taker
@@ -679,8 +693,13 @@ class BinanceAPIClass:
         elif _type == 'limit':
             _client_type        = self.binance_client_obj.ORDER_TYPE_LIMIT
             _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
-            _what_fee           = 'maker' # --> I'm going to Price so it's a maker     
-         
+            _what_fee           = 'maker' # --> I'm going to Price so it's a maker
+                 
+        elif _type == 'stop_limit':
+            _client_type        = self.binance_client_obj.ORDER_TYPE_STOP_LOSS_LIMIT
+            _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
+            _what_fee           = 'maker' # --> I'm going to Price so it's a maker  
+
         else:
             
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot',_inputs,'_type unknown')}")
@@ -709,7 +728,6 @@ class BinanceAPIClass:
         
 
         # Create ORDER
-
         if _type == 'market':
 
             try:
@@ -718,7 +736,6 @@ class BinanceAPIClass:
                                                                 type        = _client_type,
                                                                 quantity    = _quantity[1])
                 self.response_tuple = ('OK', _order)
-                
             except:
                 self.response_tuple = ('NOK',  f"{ self.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
             
@@ -736,10 +753,33 @@ class BinanceAPIClass:
                                                                 quantity    = _quantity[1],
                                                                 price       = _price)
                 self.response_tuple = ('OK', _order)
-                
             except:
                 self.response_tuple = ('NOK',  f"{ self.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
-                               
+
+        elif _type == 'stop_limit':   
+            
+            if _price is None:
+                self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot',_inputs,'Order Stop Limit without LIMIT input')}")
+                return(self.response_tuple)
+                
+            if _stop is None:
+                self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot',_inputs,'Order Stop Limit without STOP input')}")
+                return(self.response_tuple)
+                
+            try:
+                
+                _order = self.binance_client_obj.create_order(  symbol      = self.symbol,
+                                                                side        = _client_side,
+                                                                type        = _client_type,
+                                                                timeInForce = _client_timeinforce,
+                                                                quantity    = _quantity[1],
+                                                                price       = _price,
+                                                                stopPrice   = _stop)
+
+                self.response_tuple = ('OK', _order)
+            except:
+                self.response_tuple = ('NOK',  f"{ self.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
+
         else:
             
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','create_order_spot',_inputs,'_type unknown')}")
@@ -803,21 +843,20 @@ class BinanceAPIClass:
             'fills': []
         }
 
-        """
-        """
-        ------------
-        -- RESULT --
-        ------------
-        Data: 2020-06-17 12:40:48 
-        Simbolo: BTCUSDT 
-        Tipo: LIMIT 
-        Side: SELL 
-        Prezzo: 0 
-        Fee pagate in None: 0 
-        Quantità Venduta: 0E-8 
-        Ricavo: 0E-8 
-        Status: NEW 
-        Order Id: 2499390785
+        >>> OUTPUT STOP LIMIT <<<<
+        
+        Minimize:
+        
+        {'symbol': 'BTCUSDT', 'orderId': 2501977468, 'orderListId': -1, 'clientOrderId': 'lZSYY2UqSg64vc50Rrjkjq', 'transactTime': 1592413901290}
+
+        Readable:
+
+        {   'symbol': 'BTCUSDT', 
+            'orderId': 2501977468, 
+            'orderListId': -1, 
+            'clientOrderId': 'lZSYY2UqSg64vc50Rrjkjq', 
+            'transactTime': 1592413901290   }
+        
         """
 
     # Format Order Spot Result
