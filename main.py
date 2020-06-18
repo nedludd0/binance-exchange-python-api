@@ -66,10 +66,9 @@ def run(choose):
                 if _dict.get('asset') is not None:          
                     print(f"{_dict.get('asset')} free: {_dict.get('free')}")
                     print(f"{_dict.get('asset')} locked: {_dict.get('locked')}")
-                    print("----")                    
-            print(f"---------")
-            print(f"Tot BTC: {round(_dict.get('tot_btc'),8)}")        
-            print(f"Tot USDT: {round(_dict.get('tot_usdt'),2)}")
+                    print("--------")
+            print(f"Tot Estimated BTC: {round(_out[1][0].get('tot_btc'),8)}")        
+            print(f"Tot Estimated USDT: {round(_out[1][0].get('tot_usdt'),2)}")
 
         elif _out[0] == 'NOK':
             print(f"{chr(10)}-----------")
@@ -77,7 +76,7 @@ def run(choose):
             print(f"-----------") 
             print(f"{_out[1]}")
             print(f"{chr(10)}")
-    
+
     # MakeOrder
     elif choose == 4:
 
@@ -87,7 +86,8 @@ def run(choose):
         # Inputs
         print(f"{chr(10)}------------")        
         print(f"-- INPUTs --")
-        print(f"------------")        
+        print(f"------------")
+        print(f"Symbol: {symbol}")
         _type               = input("Choose TYPE (market 1, limit 2 or stop_limit 3): ")
         if int(_type) == 1:
             _type = 'market'
@@ -178,15 +178,13 @@ def run(choose):
         
         """
         #DEBUG
-        _symbol_input       = 'BTCETH'
-        _binance_client_obj = BinanceAPIClass(symbol_first, symbol_second)
-        _out                = _binance_client_obj.check_if_symbol_exists()
-        
+        _binance_client_obj = BinanceAPIClass()
+        _out                = _binance_client_obj.get_my_dust_log()
         if _out[0] == 'OK':
             print(f"{chr(10)}------------")
             print(f"-- RESULT --")
             print(f"------------")            
-            print(_out[1])            
+            pprint(_out[1])            
             print(f"{chr(10)}")            
         elif _out[0] == 'NOK':
             print(f"{chr(10)}-----------")

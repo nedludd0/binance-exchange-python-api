@@ -32,7 +32,7 @@ class BinanceAPIClass:
         self.response_tuple = None
 
     """""""""""""""""""""
-    Utility
+    MY UTILITY
     """""""""""""""""""""
     # My Default Timezone
     def default_timezone(self):
@@ -93,7 +93,7 @@ class BinanceAPIClass:
         return(self.response_tuple)
     
     """""""""""""""""""""
-    Binance Base Functions
+    GENERAL ENDPOINTS
     """""""""""""""""""""
     # Check if Symbol Exists
     def check_if_symbol_exists(self, _symbol_input = None):
@@ -171,11 +171,79 @@ class BinanceAPIClass:
         
         return(self.response_tuple)
 
+    """""""""""""""""""""""""""
+    ACCOUNT ENDPOINTS - GENERIC
+    """""""""""""""""""""""""""
+    # Get My Dust Logs
+    def get_my_dust_log(self):
+        
+        # Prepare
+        _inputs = None
+        _dust   = None
+        
+        try:
+            _dust = self.binance_client_obj.get_dust_log()
+            self.response_tuple = ('OK', _dust)
+        except:
+            self.response_tuple = ('NOK',  f"{ self.my_log('Exception','get_my_dust',_inputs,traceback.format_exc(2))}")
+
+        """
+        {   'success': True, 
+            'results': {    'rows': [   {   'transfered_total': '0.00312182', 
+                                            'service_charge_total': '0.00006371', 
+                                            'tran_id': 8605174939, 
+                                            'logs': [   {   'tranId': 8605174939, 
+                                                            'serviceChargeAmount': '0.00006046', 
+                                                            'uid': '41168199', 
+                                                            'amount': '0.599', 
+                                                            'operateTime': '2020-06-04 09:51:38', 
+                                                            'transferedAmount': '0.00296269', 
+                                                            'fromAsset': 'ADA'  }, 
+                                                            
+                                                        {   'tranId': 8605174939, 
+                                                            'serviceChargeAmount': '0.00000325', 
+                                                            'uid': '41168199', 
+                                                            'amount': '0.00281376', 
+                                                            'operateTime': '2020-06-04 09:51:38', 
+                                                            'transferedAmount': '0.00015913', 
+                                                            'fromAsset': 'USDT' }   ], 
+                                             'operate_time': '2020-06-04 09:51:38'  }, 
+                                             
+                                             {  'transfered_total': '0.00205088', 
+                                                'service_charge_total': '0.00004185', 
+                                                'tran_id': 8665577173, 
+                                                'logs': [   {   'tranId': 8665577173, 
+                                                                'serviceChargeAmount': '0.00004185', 
+                                                                'uid': '41168199', 
+                                                                'amount': '0.03642189', 
+                                                                'operateTime': '2020-06-08 09:29:46', 
+                                                                'transferedAmount': '0.00205088', 
+                                                                'fromAsset': 'USDT'}    ], 
+                                             'operate_time': '2020-06-08 09:29:46'}, 
+                                             
+                                             {  'transfered_total': '0.03713868', 
+                                                'service_charge_total': '0.00075793', 
+                                                'tran_id': 8508063479, 
+                                                'logs': [   {   'tranId': 8508063479, 
+                                                                'serviceChargeAmount': '0.00075793', 
+                                                                'uid': '41168199', 
+                                                                'amount': '0.65978', 
+                                                                'operateTime': '2020-05-30 14:15:22', 
+                                                                'transferedAmount': '0.03713868', 
+                                                                'fromAsset': 'USDT'}    ], 
+                                             'operate_time': '2020-05-30 14:15:22'} ], 
+                                             
+                                             'total': 3 }   }
+        """
+
+
+        return(self.response_tuple)
+
     # Get My Open Orders
     def get_my_openorders(self, _symbol = None):
 
         # Prepare
-        _inputs         = f"{_symbol}"
+        _inputs = f"{_symbol}"
         
         try:
             if _symbol is None:
@@ -296,16 +364,16 @@ class BinanceAPIClass:
                                     self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_balance',_inputs,_avg_price_temp_usdt[1])}")
                         
                         
-                 # Add Estimated Value BTC & USDT
+                 # Add Estimated Value BTC & USDT at the first position of the list
                 _tot_btc    = _tot_btc_free + _tot_btc_locked
                 _tot_usdt   = _tot_usdt_free + _tot_usdt_locked
                  
-                _my_balance.append( {   'tot_btc_free': _tot_btc_free, 
-                                        'tot_btc_locked': _tot_btc_locked, 
-                                        'tot_usdt_free': _tot_usdt_free, 
-                                        'tot_usdt_locked': _tot_usdt_locked,                                        
-                                        'tot_btc': _tot_btc,
-                                        'tot_usdt': _tot_usdt,} )
+                _my_balance.insert( 0 , {   'tot_btc_free': _tot_btc_free, 
+                                            'tot_btc_locked': _tot_btc_locked, 
+                                            'tot_usdt_free': _tot_usdt_free, 
+                                            'tot_usdt_locked': _tot_usdt_locked,                                        
+                                            'tot_btc': _tot_btc,
+                                            'tot_usdt': _tot_usdt   } )
                 
                 self.response_tuple = ('OK', _my_balance)
                 
@@ -504,11 +572,14 @@ class BinanceAPIClass:
     # Calculate exact Quantity to BUY
     def get_my_quantity_to_buy(self, _what_fee, _type, _price = None):
         
-        # Prepate
+        # Prepare
         _inputs                         = f"{_what_fee}|{_type}|{_price}|{self.symbol_first}|{self.symbol_second}|{self.size}"
-        symbol_bal_second_free          = None
-        symbol_bal_second_free_size     = None        
-        symbol_bal_second_tot_estimated = None        
+        _get_tot_symbol                 = f"tot_{self.symbol_second.lower()}" # build Wallet Dict Key
+        
+        symbol_bal_second_free          = None       
+        symbol_bal_second_tot_estimated = None
+        symbol_bal_to_use               = None
+        symbol_bal_to_use_size          = None                
         symbol_step_size                = None
         symbol_min_qty                  = None
         symbol_min_notional             = None        
@@ -520,16 +591,28 @@ class BinanceAPIClass:
 
         # By default rounding setting in python is ROUND_HALF_EVEN
         getcontext().rounding = ROUND_DOWN
-
+        
         # Get Owned Asset Balance Free
         _symbol_bal_second_free = self.get_my_asset_balance_free(self.symbol_second)
         
         # Get Owned Asset Balance Tot Estimated
         if _symbol_bal_second_free[0] == 'OK':
-            _symbol_bal_second_tot_estimated  = self.get_my_balance_total(_what_based = self.symbol_second.upper() )
+            _symbol_bal_second_tot_estimated    = self.get_my_balance_total(_what_based = self.symbol_second.upper() )
         else:
             self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_symbol_bal_second_free[1])}")
             return(self.response_tuple)
+        
+        # Build bal to use & size
+        symbol_bal_to_use       = _symbol_bal_second_tot_estimated[1][0].get(_get_tot_symbol)
+        symbol_bal_to_use_size  = round( symbol_bal_to_use / 100 *  Decimal(self.size) , 5 )
+        
+        # Check size
+        # The size provided like input is wrong because the qta 
+        # to be used cannot be greater than the one available for that second symbol
+        if symbol_bal_to_use_size > _symbol_bal_second_free[1]:
+            _msg                = f"The input Size ( = {self.size}) is wrong because the second symbol qta to use to buy ( = {symbol_bal_to_use_size}) > qta available ( = {_symbol_bal_second_free})"
+            self.response_tuple = ('NOK',  f"{ self.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
+            return(self.response_tuple)        
         
         # Get Symbol Filter LOT_SIZE
         if _symbol_bal_second_tot_estimated[0] == 'OK':
@@ -571,17 +654,16 @@ class BinanceAPIClass:
         # Calculate Quantity End
         if _symbol_price[0] == 'OK':
             
-            symbol_bal_second_free  = _symbol_bal_second_free[1]
             symbol_step_size        = _symbol_lot_size[1].get('LOT_SIZE_step_size')
             symbol_min_qty          = _symbol_lot_size[1].get('LOT_SIZE_minQty')
             symbol_min_notional     = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
             symbol_fee              = _symbol_fee[1]        
             symbol_price            = _symbol_price[1]
+                           
+            symbol_fee_perc         = (100 - symbol_fee) / 100 
+            quantity_start          = (symbol_bal_to_use_size / symbol_price) * symbol_fee_perc
+            quantity_end            = self.truncate_by_step_size(quantity_start, symbol_step_size)
             
-            symbol_bal_second_free_size = round( symbol_bal_second_free / 100 *  Decimal(self.size) , 5 )
-            symbol_fee_perc             = (100 - symbol_fee) / 100 
-            quantity_start              = (symbol_bal_second_free_size / symbol_price) * symbol_fee_perc
-            quantity_end                = self.truncate_by_step_size(quantity_start, symbol_step_size)
             if quantity_end[0] == 'OK':
                 
                 quantity_temp = quantity_end[1]
@@ -611,19 +693,24 @@ class BinanceAPIClass:
     def get_my_quantity_to_sell(self, _type, _price = None):
         
         # Prepare
-        _inputs                         = f"{_type}|{_price}|{self.symbol_first}|{self.symbol_second}|{self.size}"
-        symbol_bal_first_free           = None
-        symbol_bal_first_free_size      = None        
-        symbol_step_size                = None
-        symbol_min_qty                  = None
-        symbol_min_notional             = None
-        symbol_price                    = None        
-        quantity_start                  = None
-        quantity_end                    = None
+        _inputs                 = f"{_type}|{_price}|{self.symbol_first}|{self.symbol_second}|{self.size}"
+        
+        symbol_bal_to_use       = None
+        symbol_bal_to_use_size  = None        
+        symbol_step_size        = None
+        symbol_min_qty          = None
+        symbol_min_notional     = None
+        symbol_price            = None        
+        quantity_start          = None
+        quantity_end            = None
     
         # Get Owned Asset Balance Free
         _symbol_bal_first_free = self.get_my_asset_balance_free(self.symbol_first)       
-        
+
+        # Build bal to use & size
+        symbol_bal_to_use       = _symbol_bal_first_free[1]
+        symbol_bal_to_use_size  = symbol_bal_to_use / 100 *  Decimal(self.size)
+
         # Get Symbol LOT SIZE
         if _symbol_bal_first_free[0] == 'OK':
             _symbol_lot_size = self.get_symbol_info_filter('LOT_SIZE')
@@ -661,15 +748,14 @@ class BinanceAPIClass:
         # Calculate Quantity End
         if _symbol_price[0] == 'OK':
             
-            symbol_bal_first_free   = _symbol_bal_first_free[1]
-            symbol_step_size        = _symbol_lot_size[1].get('LOT_SIZE_step_size')
-            symbol_min_qty          = _symbol_lot_size[1].get('LOT_SIZE_minQty')
-            symbol_min_notional     = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
-            symbol_price            = _symbol_price[1]            
+            symbol_step_size    = _symbol_lot_size[1].get('LOT_SIZE_step_size')
+            symbol_min_qty      = _symbol_lot_size[1].get('LOT_SIZE_minQty')
+            symbol_min_notional = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
+            symbol_price        = _symbol_price[1]
+                        
+            quantity_start      = Decimal(symbol_bal_to_use_size)
+            quantity_end        = self.truncate_by_step_size(quantity_start, symbol_step_size)
             
-            symbol_bal_first_free_size  = symbol_bal_first_free / 100 *  Decimal(self.size)
-            quantity_start              = Decimal(symbol_bal_first_free_size)
-            quantity_end                = self.truncate_by_step_size(quantity_start, symbol_step_size)
             if quantity_end[0] == 'OK':
                 
                 quantity_temp = quantity_end[1]
@@ -690,9 +776,9 @@ class BinanceAPIClass:
     
         return(self.response_tuple)
 
-    """""""""""""""""""""
-    Binance Order Functions
-    """""""""""""""""""""
+    """""""""""""""""""""""""""
+    ACCOUNT ENDPOINTS - ORDER
+    """""""""""""""""""""""""""    
     # Create a Order Spot
     def create_order_spot(self, _type, _side, _price, _stop):
         
@@ -901,7 +987,7 @@ class BinanceAPIClass:
         return(self.response_tuple)
 
     """""""""""""""""""""
-    Format Binance Result
+    FORMAT BINANCE RESULT
     """""""""""""""""""""
     # Format My Open Orders Results
     def format_my_openorders_result(self, _result):
