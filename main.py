@@ -56,21 +56,27 @@ def run(choose):
     elif choose == 3:
         
         _binance_client_obj = BinanceAPIClass()
-        _out                = _binance_client_obj.get_my_balance()
+        _out                = _binance_client_obj.get_my_balance_total()
         
         if _out[0] == 'OK':
-            _binance_client_obj.print_my_balance_result(_out[1])
+            print(f"{chr(10)}------------")
+            print(f"-- RESULT --")
+            print(f"------------")          
+            for _dict in _out[1]:
+                if _dict.get('asset') is not None:          
+                    print(f"{_dict.get('asset')} free: {_dict.get('free')}")
+                    print(f"{_dict.get('asset')} locked: {_dict.get('locked')}")
+                    print("----")                    
+            print(f"---------")
+            print(f"Tot BTC: {round(_dict.get('tot_btc'),8)}")        
+            print(f"Tot USDT: {round(_dict.get('tot_usdt'),2)}")
+
         elif _out[0] == 'NOK':
             print(f"{chr(10)}-----------")
             print(f"-- ERROR --")
             print(f"-----------") 
             print(f"{_out[1]}")
             print(f"{chr(10)}")
-        
-        print('-------------')
-        print('- Info RUN --')
-        print('-------------')        
-        print(f"symbol  : {symbol}")   
     
     # MakeOrder
     elif choose == 4:
@@ -101,14 +107,14 @@ def run(choose):
         _out                = _binance_client_obj.create_order_spot(_type, _side, _price, _stop)
 
         if _out[0] == 'OK':
-            #_formatted_output_temp = _binance_client_obj.format_order_spot_result(_type, _out[1])
-            #_formatted_output      = _formatted_output_temp[1] 
-            _formatted_output      = _out[1]
+            _formatted_output_temp = _binance_client_obj.format_order_spot_result( _out[1], _type)
+            _formatted_output      = _formatted_output_temp[1] 
+            #_formatted_output      = _out[1]
             print(f"{chr(10)}------------")
             print(f"-- RESULT --")
             print(f"------------")            
-            #print(f"{_formatted_output}")
-            print(_formatted_output)            
+            print(f"{_formatted_output}")
+            #print(_formatted_output)            
             print(f"{chr(10)}")            
         elif _out[0] == 'NOK':
             print(f"{chr(10)}-----------")
@@ -117,7 +123,6 @@ def run(choose):
             print(f"{_out[1]}")
             print(f"{chr(10)}")
 
-
     # GetOpenOrders
     elif choose == 5:
         
@@ -125,11 +130,15 @@ def run(choose):
         _out                = _binance_client_obj.get_my_openorders()
 
         if _out[0] == 'OK':
+            _formatted_output_temp = _binance_client_obj.format_my_openorders_result(_out[1])
+            _formatted_output      = _formatted_output_temp[1]
+            #_formatted_output      =_out[1]             
             print(f"{chr(10)}------------")
             print(f"-- RESULT --")
             print(f"------------{chr(10)}")  
-            for _dict in _out[1]:          
+            for _dict in _formatted_output:          
                 print(f"{_dict}{chr(10)}")
+            #pprint(_formatted_output)
                               
         elif _out[0] == 'NOK':
             print(f"{chr(10)}-----------")
@@ -166,7 +175,26 @@ def run(choose):
             print(f"{chr(10)}")
 
     else:
-
+        
+        """
+        #DEBUG
+        _symbol_input       = 'BTCETH'
+        _binance_client_obj = BinanceAPIClass(symbol_first, symbol_second)
+        _out                = _binance_client_obj.check_if_symbol_exists()
+        
+        if _out[0] == 'OK':
+            print(f"{chr(10)}------------")
+            print(f"-- RESULT --")
+            print(f"------------")            
+            print(_out[1])            
+            print(f"{chr(10)}")            
+        elif _out[0] == 'NOK':
+            print(f"{chr(10)}-----------")
+            print(f"-- ERROR --")
+            print(f"-----------") 
+            print(f"{_out[1]}")
+            print(f"{chr(10)}")
+        """
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
 
