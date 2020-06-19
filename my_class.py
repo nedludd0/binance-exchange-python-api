@@ -9,15 +9,14 @@ import traceback
 import utility
 
 # Python Binance Lib
-import config_api
 from binance.client import Client, BinanceAPIException
 
 class BinanceAPIClass:
     
-    def __init__(self, _symbol_first = None, _symbol_second = None, _size = 100):
+    def __init__(self, _api_key, _api_secret, _symbol_first = None, _symbol_second = None, _size = 100):
         
-        # Instance Binance Client
-        self.binance_client_obj = Client(config_api.API_KEY, config_api.API_SECRET)
+        # Instance Binance Client)
+        self.binance_client_obj = Client(_api_key, _api_secret)
         
         # Size
         self.size = _size
@@ -586,7 +585,8 @@ class BinanceAPIClass:
         
             if _asset_balance_response is not None:
                 if _asset_balance_response.get('free') is not None:
-                    _bal = round( Decimal(_asset_balance_response.get('free')) , 5 )
+                    #_bal = round( Decimal(_asset_balance_response.get('free')) , 5 )
+                    _bal = Decimal(_asset_balance_response.get('free'))
                 self.response_tuple = ('OK', _bal)
             else:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','get_my_asset_balance_free',_inputs,'_asset_balance_response is None')}")
@@ -639,11 +639,12 @@ class BinanceAPIClass:
         symbol_bal_to_use       = _symbol_bal_second_tot_estimated[1][0].get('totals').get(_get_tot_symbol)
         symbol_bal_to_use_size  = round( symbol_bal_to_use / 100 *  Decimal(self.size) , 5 )
         
-        # Check size
-        # The size provided like input is wrong because the qta 
-        # to be used cannot be greater than the one available for that second symbol
+        # CHECK SIZE
+        # The size provided like input is wrong IF the qta 
+        # to be used is greater than the one available for that second symbol
         if symbol_bal_to_use_size > _symbol_bal_second_free[1]:
             
+            # STOP Qta to sell TO Real Free Qta
             symbol_bal_to_use_size = _symbol_bal_second_free[1]
             
             #_msg                = f"The input Size ( = {self.size}) is wrong because the second symbol qta to use to buy ( = {symbol_bal_to_use_size}) > qta available ( = {_symbol_bal_second_free[1]})"
@@ -730,7 +731,7 @@ class BinanceAPIClass:
         
         # Prepare
         _inputs                 = f"{_type}|{_price}|{self.symbol_first}|{self.symbol_second}|{self.size}"
-        
+
         symbol_bal_to_use       = None
         symbol_bal_to_use_size  = None        
         symbol_step_size        = None
@@ -739,7 +740,7 @@ class BinanceAPIClass:
         symbol_price            = None        
         quantity_start          = None
         quantity_end            = None
-    
+
         # Get Owned Asset Balance Free
         _symbol_bal_first_free = self.get_my_asset_balance_free(self.symbol_first)       
 

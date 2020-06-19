@@ -5,19 +5,23 @@ from pprint import pprint
 from decimal import getcontext, ROUND_DOWN, Decimal
 import math
 
+import config_api
+
 def run(choose):
 
     # Prepare
     symbol_first       = 'BTC'
     symbol_second      = 'USDT'
     symbol             = f"{symbol_first}{symbol_second}"
+    api_key            = config_api.API_KEY
+    api_sec            = config_api.API_SECRET
 
     ## GENERAL ENDPOINTS ##
     
     # AvgPriceSymbol
     if choose == 1:
         
-        _binance_client_obj = BinanceAPIClass(symbol_first, symbol_second)
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec, symbol_first, symbol_second)
         _out                = _binance_client_obj.get_avg_price()
         
         if _out[0] == 'OK':
@@ -37,7 +41,7 @@ def run(choose):
     # RateLimits
     elif choose == 2:
 
-        _binance_client_obj = BinanceAPIClass()
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec)
         _out                = _binance_client_obj.get_rate_limits()
 
         if _out[0] == 'OK':
@@ -58,7 +62,7 @@ def run(choose):
     # MyBalance
     elif choose == 3:
         
-        _binance_client_obj = BinanceAPIClass()
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec)
         _out                = _binance_client_obj.get_my_balance_total()
         
         if _out[0] == 'OK':
@@ -108,7 +112,7 @@ def run(choose):
         print(f"{chr(10)}")
         
         # Make Order
-        _binance_client_obj = BinanceAPIClass(symbol_first, symbol_second, _size)
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec, symbol_first, symbol_second, _size)
         _out                = _binance_client_obj.create_order_spot(_type, _side, _price, _stop)
 
         if _out[0] == 'OK':
@@ -131,7 +135,7 @@ def run(choose):
     # GetOpenOrders
     elif choose == 5:
         
-        _binance_client_obj = BinanceAPIClass()
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec)
         _out                = _binance_client_obj.get_my_openorders()
 
         if _out[0] == 'OK':
@@ -164,7 +168,7 @@ def run(choose):
         print(f"{chr(10)}")
         
         # Cancel Order
-        _binance_client_obj = BinanceAPIClass()
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec)
         _out                = _binance_client_obj.cancel_order_spot(_symbol, _orderid)
 
         if _out[0] == 'OK':
@@ -194,7 +198,7 @@ def run(choose):
         print(f"{chr(10)}")
         
         # Convert My Dust to BNB
-        _binance_client_obj = BinanceAPIClass()
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec)
         _out                = _binance_client_obj.convert_my_dust_to_bnb(_symbol)
 
         if _out[0] == 'OK':
@@ -211,7 +215,7 @@ def run(choose):
 
     else:
         
-        _binance_client_obj = BinanceAPIClass()
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec)
         _out = _binance_client_obj.get_my_dust_log()
         if _out[0] == 'OK':
             print(f"{chr(10)}------------")
