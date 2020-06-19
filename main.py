@@ -212,7 +212,7 @@ def run(choose):
     else:
         
         _binance_client_obj = BinanceAPIClass()
-        _out = _binance_client_obj.check_if_symbol_exists('BTCUSDTc')
+        _out = _binance_client_obj.get_my_dust_log()
         if _out[0] == 'OK':
             print(f"{chr(10)}------------")
             print(f"-- RESULT --")
