@@ -13,7 +13,7 @@ import utility
 
 class BinanceAPIClass:
     
-    def __init__(self, _api_key = None, _api_secret = None, _symbol_first = None, _symbol_second = None, _size = 100):
+    def __init__(self, _api_key = None, _api_secret = None, _symbol_first = None, _symbol_second = None):
 
         # Instance Binance Client
         if _api_key is not None and _api_secret is not None:
@@ -21,8 +21,6 @@ class BinanceAPIClass:
         else:
             self.binance_client_obj = Client()
         
-        # Size
-        self.size = _size
         # Symbol
         if _symbol_first is not None:
             self.symbol_first = _symbol_first.upper()
@@ -606,10 +604,10 @@ class BinanceAPIClass:
         return(self.response_tuple)
 
     # Calculate exact Quantity to BUY
-    def get_my_quantity_to_buy(self, _what_fee, _type, _price = None):
+    def get_my_quantity_to_buy(self, _what_fee, _type, _size, _price = None):
         
         # Prepare
-        _inputs                         = f"{_what_fee}|{_type}|{_price}|{self.symbol_first}|{self.symbol_second}|{self.size}"
+        _inputs                         = f"{_what_fee}|{_type}|{_size}|{_price}|{self.symbol_first}|{self.symbol_second}"
         _get_tot_symbol                 = f"tot_{self.symbol_second.lower()}" # build Wallet Dict Key
         
         symbol_bal_second_free          = None       
@@ -640,7 +638,7 @@ class BinanceAPIClass:
         
         # Build bal to use & size
         symbol_bal_to_use       = _symbol_bal_second_tot_estimated[1][0].get('totals').get(_get_tot_symbol)
-        symbol_bal_to_use_size  = round( symbol_bal_to_use / 100 *  Decimal(self.size) , 5 )
+        symbol_bal_to_use_size  = round( symbol_bal_to_use / 100 *  Decimal(_size) , 5 )
         
         # CHECK SIZE
         # The size provided like input is wrong IF the qta 
@@ -650,7 +648,7 @@ class BinanceAPIClass:
             # STOP Qta to sell TO Real Free Qta
             symbol_bal_to_use_size = _symbol_bal_second_free[1]
             
-            #_msg                = f"The input Size ( = {self.size}) is wrong because the second symbol qta to use to buy ( = {symbol_bal_to_use_size}) > qta available ( = {_symbol_bal_second_free[1]})"
+            #_msg                = f"The input Size ( = {_size}) is wrong because the second symbol qta to use to buy ( = {symbol_bal_to_use_size}) > qta available ( = {_symbol_bal_second_free[1]})"
             #self.response_tuple = ('NOK',  f"{ utility.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
             #return(self.response_tuple)        
         
@@ -711,7 +709,7 @@ class BinanceAPIClass:
                     
                     if (symbol_price * quantity_temp) > symbol_min_notional:
                         
-                        if self.size == 100:
+                        if _size == 100:
                             quantity_temp = quantity_temp - symbol_step_size # To avoid "Account has insufficient balance for requested action" if there is a pump in progress
                     
                         self.response_tuple = ('OK', quantity_temp)
@@ -730,10 +728,10 @@ class BinanceAPIClass:
         return(self.response_tuple)
 
     # Calculate exact Quantity to SELL
-    def get_my_quantity_to_sell(self, _type, _price = None):
+    def get_my_quantity_to_sell(self, _type, _size, _price = None):
         
         # Prepare
-        _inputs                 = f"{_type}|{_price}|{self.symbol_first}|{self.symbol_second}|{self.size}"
+        _inputs                 = f"{_type}|{_size}|{_price}|{self.symbol_first}|{self.symbol_second}"
 
         symbol_bal_to_use       = None
         symbol_bal_to_use_size  = None        
@@ -749,7 +747,7 @@ class BinanceAPIClass:
 
         # Build bal to use & size
         symbol_bal_to_use       = _symbol_bal_first_free[1]
-        symbol_bal_to_use_size  = symbol_bal_to_use / 100 *  Decimal(self.size)
+        symbol_bal_to_use_size  = symbol_bal_to_use / 100 *  Decimal(_size)
 
         # Get Symbol LOT SIZE
         if _symbol_bal_first_free[0] == 'OK':
@@ -821,10 +819,10 @@ class BinanceAPIClass:
     ACCOUNT ENDPOINTS - ORDER
     """""""""""""""""""""""""""    
     # Create a Order Spot
-    def create_order_spot(self, _type, _side, _price, _stop):
+    def create_order_spot(self, _type, _side, _size, _price, _stop):
         
         # Prepare
-        _inputs         = f"{_type}|{_side}|{_price}|{_stop}|{self.symbol_first}|{self.symbol_second}|{self.size}"
+        _inputs         = f"{_type}|{_side}|{_size}|{_price}|{_stop}|{self.symbol_first}|{self.symbol_second}"
         _quantity       = None
         _symbol_exists  = None
         
@@ -858,7 +856,7 @@ class BinanceAPIClass:
         if _side == 'sell':
     
             _client_side    = self.binance_client_obj.SIDE_SELL
-            _quantity       = self.get_my_quantity_to_sell(_type, _price)
+            _quantity       = self.get_my_quantity_to_sell(_type, _size, _price)
             if _quantity[0] == 'NOK':
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,_quantity[1])}")
                 return(self.response_tuple)
@@ -866,7 +864,7 @@ class BinanceAPIClass:
         elif _side == 'buy':
             
             _client_side    = self.binance_client_obj.SIDE_BUY      
-            _quantity       = self.get_my_quantity_to_buy(_what_fee, _type, _price)
+            _quantity       = self.get_my_quantity_to_buy(_what_fee, _type, _size, _price)
             if _quantity[0] == 'NOK':
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,_quantity[1])}")
                 return(self.response_tuple)
@@ -1242,8 +1240,8 @@ class BinanceAPIClass:
         _date               = None
         
         # Get useful values
-        if _type.lower() == 'stop_limit': # --> The type is not written on the output of a STOP_LOSS_LIMIT Order
-            _type_result = 'STOP_LIMIT'
+        if _type == 'stop_limit': # --> The type is not written on the output of a STOP_LOSS_LIMIT Order
+            _type_result = 'STOP_LOSS_LIMIT'
         else:
             _type_result = _result.get('type').upper()
         
@@ -1347,7 +1345,7 @@ class BinanceAPIClass:
                         f"{_row_l_7} {chr(10)}"\
                         f"{_row_l_8}" 
 
-        elif _type_result == 'STOP_LIMIT': # Stop Limit Type Order
+        elif _type_result == 'STOP_LOSS_LIMIT': # Stop Limit Type Order
 
             # Build Rows
             _row_sl_4   =   f"Type: Stop-Limit"

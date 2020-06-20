@@ -21,7 +21,7 @@ def run(choose):
     # AvgPriceSymbol
     if choose == 1:
         
-        _binance_client_obj = BinanceAPIClass(api_key, api_sec, symbol_first, symbol_second)
+        _binance_client_obj = BinanceAPIClass(_symbol_first = symbol_first, _symbol_second = symbol_second)
         _out                = _binance_client_obj.get_avg_price()
         
         if _out[0] == 'OK':
@@ -41,7 +41,7 @@ def run(choose):
     # RateLimits
     elif choose == 2:
 
-        _binance_client_obj = BinanceAPIClass(api_key, api_sec)
+        _binance_client_obj = BinanceAPIClass()
         _out                = _binance_client_obj.get_rate_limits()
 
         if _out[0] == 'OK':
@@ -97,7 +97,7 @@ def run(choose):
         print(f"-- INPUTs --")
         print(f"------------")
         print(f"Symbol: {symbol}")
-        _type               = input("Choose TYPE (market 1, limit 2 or stop_limit 3): ")
+        _type = input("Choose TYPE (market 1, limit 2 or stop_limit 3): ")
         if int(_type) == 1:
             _type = 'market'
         elif int(_type) == 2:
@@ -112,8 +112,8 @@ def run(choose):
         print(f"{chr(10)}")
         
         # Make Order
-        _binance_client_obj = BinanceAPIClass(api_key, api_sec, symbol_first, symbol_second, _size)
-        _out                = _binance_client_obj.create_order_spot(_type, _side, _price, _stop)
+        _binance_client_obj = BinanceAPIClass(api_key, api_sec, symbol_first, symbol_second)
+        _out                = _binance_client_obj.create_order_spot(_type, _side, _size, _price, _stop)
 
         if _out[0] == 'OK':
             _formatted_output_temp = _binance_client_obj.format_order_spot_result( _out[1], _type)
@@ -214,7 +214,7 @@ def run(choose):
             print(f"{chr(10)}")
 
     else:
-        
+        """
         _binance_client_obj = BinanceAPIClass(api_key, api_sec)
         _out = _binance_client_obj.get_my_dust_log()
         if _out[0] == 'OK':
@@ -228,7 +228,7 @@ def run(choose):
             print(f"-----------") 
             print(_out[1])
             print(f"{chr(10)}")
-
+        """
         
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
