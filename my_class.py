@@ -5,18 +5,21 @@ import math
 # Logs
 import traceback
 
-# My
-import utility
-
 # Python Binance Lib
 from binance.client import Client, BinanceAPIException
 
+# My
+import utility
+
 class BinanceAPIClass:
     
-    def __init__(self, _api_key, _api_secret, _symbol_first = None, _symbol_second = None, _size = 100):
-        
-        # Instance Binance Client)
-        self.binance_client_obj = Client(_api_key, _api_secret)
+    def __init__(self, _api_key = None, _api_secret = None, _symbol_first = None, _symbol_second = None, _size = 100):
+
+        # Instance Binance Client
+        if _api_key is not None and _api_secret is not None:
+            self.binance_client_obj = Client(_api_key, _api_secret)
+        else:
+            self.binance_client_obj = Client()
         
         # Size
         self.size = _size
@@ -1239,8 +1242,8 @@ class BinanceAPIClass:
         _date               = None
         
         # Get useful values
-        if _type == 'stop_limit': # --> The type is not written on the output of a STOP_LOSS_LIMIT Order
-            _type_result = 'STOP_LOSS_LIMIT'
+        if _type.lower() == 'stop_limit': # --> The type is not written on the output of a STOP_LOSS_LIMIT Order
+            _type_result = 'STOP_LIMIT'
         else:
             _type_result = _result.get('type').upper()
         
@@ -1344,7 +1347,7 @@ class BinanceAPIClass:
                         f"{_row_l_7} {chr(10)}"\
                         f"{_row_l_8}" 
 
-        elif _type_result == 'STOP_LOSS_LIMIT': # Stop Limit Type Order
+        elif _type_result == 'STOP_LIMIT': # Stop Limit Type Order
 
             # Build Rows
             _row_sl_4   =   f"Type: Stop-Limit"
