@@ -214,21 +214,6 @@ def run(choose):
             print(f"{chr(10)}")
 
     else:
-        """
-        _binance_client_obj = BinanceAPIClass(api_key, api_sec)
-        _out = _binance_client_obj.get_my_dust_log()
-        if _out[0] == 'OK':
-            print(f"{chr(10)}------------")
-            print(f"-- RESULT --")
-            print(f"------------")             
-            print(_out[1])           
-        elif _out[0] == 'NOK':
-            print(f"{chr(10)}-----------")
-            print(f"-- ERROR --")
-            print(f"-----------") 
-            print(_out[1])
-            print(f"{chr(10)}")
-        """
         
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 

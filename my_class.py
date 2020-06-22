@@ -834,21 +834,17 @@ class BinanceAPIClass:
 
         # Choose TYPE & FEE
         if _type == 'market':
-            _client_type    = self.binance_client_obj.ORDER_TYPE_MARKET
-            _what_fee       = 'taker' # --> I'm going to Market so it's a taker
-
+            _client_type        = self.binance_client_obj.ORDER_TYPE_MARKET
+            _what_fee           = 'taker' # --> I'm going to Market so it's a taker
         elif _type == 'limit':
             _client_type        = self.binance_client_obj.ORDER_TYPE_LIMIT
             _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
             _what_fee           = 'maker' # --> I'm going to Price so it's a maker
-                 
         elif _type == 'stop_limit':
             _client_type        = self.binance_client_obj.ORDER_TYPE_STOP_LOSS_LIMIT
             _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
             _what_fee           = 'maker' # --> I'm going to Price so it's a maker  
-
         else:
-            
             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'_type unknown')}")
             return(self.response_tuple)
 
