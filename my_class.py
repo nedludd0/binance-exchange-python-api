@@ -288,7 +288,7 @@ class BinanceAPIClass:
                 
                 for bal in _account['balances']: # For every Balances
                     
-                    if float(bal.get('free')) > 0 or float(bal.get('locked')) > 0: # Only Asset with something
+                    if ( float(bal.get('free')) + float(bal.get('locked')) ) > 0: # Only Asset with something
                         
                         """""""""""""""""""""""""""""""""
                          Build Wallet with List Assets Dict
