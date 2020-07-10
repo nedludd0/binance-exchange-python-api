@@ -1,10 +1,7 @@
 from my_class import BinanceAPIClass
 from pprint import pprint
 
-# Mathematical
-from decimal import getcontext, ROUND_DOWN, Decimal
-import math
-
+# My Binance API Keys
 import config_api
 
 def run(choose):

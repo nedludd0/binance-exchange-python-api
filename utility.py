@@ -31,7 +31,7 @@ Log
 """
 def my_log(_type, _func, _inputs ,_msg):
     if _inputs is not None:
-        _msg_error = f"{my_time_now(True)} {_type} on function {_func} with inputs {_inputs} : MESSAGE: {_msg} {chr(10)}"
+        _msg_error = f"{my_time_now(True)} {_type} on function {_func} with inputs {_inputs} {chr(10)}MESSAGE: {_msg} {chr(10)}"
     else:
-        _msg_error = f"{my_time_now(True)} {_type} on function {_func} : MESSAGE: {_msg} {chr(10)}"
+        _msg_error = f"{my_time_now(True)} {_type} on function {_func} {chr(10)}MESSAGE: {_msg} {chr(10)}"
     return(_msg_error)
