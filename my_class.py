@@ -395,7 +395,8 @@ class BinanceAPIClass:
         
     # Get Symbol Info 
     # LOT_SIZE      --> It is used for both buy and sell
-    # MIN_NOTIONAL  --> It is used for both buy and sell and it is applied on the symbol_second in the following way: quantity symbol_first * avg price symbol > minNotional of symbol
+    # MIN_NOTIONAL  --> It is used for both buy and sell and it is applied on the symbol_second in the following way: 
+    #                   quantity symbol_first * avg price symbol > minNotional of symbol
     def get_symbol_info_filter(self, _what_filter, _symbol_input = None):
         
         # Prepare
@@ -683,7 +684,7 @@ class BinanceAPIClass:
                 self.response_tuple = ('NOK',  _symbol_fee[1])
                 return(self.response_tuple)
                 
-        elif (_type == 'limit' or _type == 'stop_limit') and _price is not None:
+        elif (_type == 'limit' or _type == 'stop_limit' or _type == 'oco') and _price is not None:
             
             # SET OK only for the following if 
             # -> in case of order limit the price is a input so it is useless to calculate the average price 
@@ -773,7 +774,7 @@ class BinanceAPIClass:
                 self.response_tuple = ('NOK',  _symbol_min_notional[1])
                 return(self.response_tuple)
                 
-        elif (_type == 'limit' or _type == 'stop_limit') and _price is not None:
+        elif (_type == 'limit' or _type == 'stop_limit' or _type == 'oco') and _price is not None:
             
             # SET OK only for the following if 
             # -> in case of order limit the price is a input so it is useless to calculate the average price 
@@ -819,10 +820,10 @@ class BinanceAPIClass:
     ACCOUNT ENDPOINTS - ORDER
     """""""""""""""""""""""""""    
     # Create a Order Spot
-    def create_order_spot(self, _type, _side, _size, _price, _stop):
+    def create_order_spot(self, _type, _side, _size, _limit, _stop, _price):
         
         # Prepare
-        _inputs         = f"{_type}|{_side}|{_size}|{_price}|{_stop}|{self.symbol_first}|{self.symbol_second}"
+        _inputs         = f"{_type}|{_side}|{_size}|{_limit}|{_stop}|{_price}|{self.symbol_first}|{self.symbol_second}"
         _quantity       = None
         _symbol_exists  = None
         
@@ -843,7 +844,10 @@ class BinanceAPIClass:
         elif _type == 'stop_limit':
             _client_type        = self.binance_client_obj.ORDER_TYPE_STOP_LOSS_LIMIT
             _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
-            _what_fee           = 'maker' # --> I'm going to Price so it's a maker  
+            _what_fee           = 'maker' # --> I'm going to Price so it's a maker
+        elif _type == 'oco':
+            _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
+            _what_fee           = 'maker' # --> I'm going to Price so it's a maker               
         else:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'_type unknown')}")
             return(self.response_tuple)
@@ -852,7 +856,7 @@ class BinanceAPIClass:
         if _side == 'sell':
     
             _client_side    = self.binance_client_obj.SIDE_SELL
-            _quantity       = self.get_my_quantity_to_sell(_type, _size, _price)
+            _quantity       = self.get_my_quantity_to_sell(_type, _size, _limit)
             if _quantity[0] == 'NOK':
                 self.response_tuple = ('NOK',  _quantity[1])
                 return(self.response_tuple)
@@ -860,7 +864,7 @@ class BinanceAPIClass:
         elif _side == 'buy':
             
             _client_side    = self.binance_client_obj.SIDE_BUY      
-            _quantity       = self.get_my_quantity_to_buy(_what_fee, _type, _size, _price)
+            _quantity       = self.get_my_quantity_to_buy(_what_fee, _type, _size, _limit)
             if _quantity[0] == 'NOK':
                 self.response_tuple = ('NOK',  _quantity[1])
                 return(self.response_tuple)
@@ -891,8 +895,8 @@ class BinanceAPIClass:
             
         elif _type == 'limit':   
             
-            if _price is None:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order Limit without price input')}")
+            if _limit is None:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order Limit without limit price input')}")
                 return(self.response_tuple)
             
             try:
@@ -901,9 +905,9 @@ class BinanceAPIClass:
                                                                 type        = _client_type,
                                                                 timeInForce = _client_timeinforce,
                                                                 quantity    = _quantity[1],
-                                                                price       = _price)
+                                                                price       = _limit)
                 self.response_tuple = ('OK', _order)
-                
+            
             except BinanceAPIException as e:
             
                 _error = str(e).split(":")[1]
@@ -915,7 +919,7 @@ class BinanceAPIClass:
 
         elif _type == 'stop_limit':   
             
-            if _price is None:
+            if _limit is None:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order Stop Limit without LIMIT input')}")
                 return(self.response_tuple)
                 
@@ -930,7 +934,7 @@ class BinanceAPIClass:
                                                                 type        = _client_type,
                                                                 timeInForce = _client_timeinforce,
                                                                 quantity    = _quantity[1],
-                                                                price       = _price,
+                                                                price       = _limit,
                                                                 stopPrice   = _stop)
 
                 self.response_tuple = ('OK', _order)
@@ -943,6 +947,43 @@ class BinanceAPIClass:
             except:
                 
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
+
+        elif _type == 'oco':   
+            
+            if _stop is None:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order OCO without STOP input')}")
+                return(self.response_tuple)
+            
+            if _limit is None:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order OCO without LIMIT input')}")
+                return(self.response_tuple)
+
+            if _price is None:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order OCO without PRICE input')}")
+                return(self.response_tuple)
+                
+            try:
+
+                _order = self.binance_client_obj.create_oco_order(  symbol              = self.symbol,
+                                                                    side                = _client_side,
+                                                                    stopLimitTimeInForce= _client_timeinforce,
+                                                                    quantity            = _quantity[1],
+                                                                    stopLimitPrice      = _limit,                                                            
+                                                                    stopPrice           = _stop,
+                                                                    price               = _price)
+
+                
+                self.response_tuple = ('OK', _order)
+                
+            except BinanceAPIException as e:
+            
+                _error = str(e).split(":")[1]
+                self.response_tuple = ('NOK',  _error)                
+            
+            except:
+                
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
+
 
         else:
             
@@ -1151,7 +1192,7 @@ class BinanceAPIClass:
     FORMAT BINANCE RESULT
     """""""""""""""""""""
     # Format My Open Orders Results
-    def format_my_openorders_result(self, _result):
+    def format_open_orders_result(self, _result):
 
         # Prepare
         _inputs         = f"{_result}"
@@ -1186,37 +1227,59 @@ class BinanceAPIClass:
                                 f"{_row4} {chr(10)}"\
                                 f"{_row5}"
         
-            elif _type_result == 'LIMIT': # Limit Type Order
+            elif _type_result == 'LIMIT' or _type_result == 'LIMIT_MAKER': # Limit Type Order
                 
                 _row_l_2    =   f"Type: Limit"
                 _row_l_6    =   f"Price: {_dict.get('price')}"
-        
-                _message    =   f"{_row0} {chr(10)}"\
-                                f"{_row1} {chr(10)}"\
-                                f"{_row_l_2} {chr(10)}"\
-                                f"{_row3} {chr(10)}"\
-                                f"{_row4} {chr(10)}"\
-                                f"{_row5} {chr(10)}"\
-                                f"{_row_l_6}"                                
-        
-            elif _type_result == 'STOP_LOSS_LIMIT': # Stop Limit Type Order
                 
+                if _dict.get('orderListId') != -1:
+                    _row_o_1    =   f"Order OCO Id: {_dict.get('orderListId')}"
+                    _message    =   f"{_row0} {chr(10)}"\
+                                    f"{_row_o_1} {chr(10)}"\
+                                    f"{_row1} {chr(10)}"\
+                                    f"{_row_l_2} {chr(10)}"\
+                                    f"{_row3} {chr(10)}"\
+                                    f"{_row4} {chr(10)}"\
+                                    f"{_row5} {chr(10)}"\
+                                    f"{_row_l_6}"
+                else:                                                                                
+                    _message    =   f"{_row0} {chr(10)}"\
+                                    f"{_row1} {chr(10)}"\
+                                    f"{_row_l_2} {chr(10)}"\
+                                    f"{_row3} {chr(10)}"\
+                                    f"{_row4} {chr(10)}"\
+                                    f"{_row5} {chr(10)}"\
+                                    f"{_row_l_6}"
+
+            elif _type_result == 'STOP_LOSS_LIMIT': # Stop Limit Type Order
+
                 _row_sl_2   =   f"Type: Stop-Limit"
                 _row_sl_6   =   f"Price: {_dict.get('price')}"                    
                 _row_sl_7   =   f"Stop: {_dict.get('stopPrice')}"          
-        
-                _message    =   f"{_row0} {chr(10)}"\
-                                f"{_row1} {chr(10)}"\
-                                f"{_row_sl_2} {chr(10)}"\
-                                f"{_row3} {chr(10)}"\
-                                f"{_row4} {chr(10)}"\
-                                f"{_row5} {chr(10)}"\
-                                f"{_row_sl_6} {chr(10)}"\
-                                f"{_row_sl_7}"
-                                                        
+                
+                if _dict.get('orderListId') != -1:                
+                    _row_o_1    =   f"Order OCO Id: {_dict.get('orderListId')}"
+                    _message    =   f"{_row0} {chr(10)}"\
+                                    f"{_row_o_1} {chr(10)}"\
+                                    f"{_row1} {chr(10)}"\
+                                    f"{_row_sl_2} {chr(10)}"\
+                                    f"{_row3} {chr(10)}"\
+                                    f"{_row4} {chr(10)}"\
+                                    f"{_row5} {chr(10)}"\
+                                    f"{_row_sl_6} {chr(10)}"\
+                                    f"{_row_sl_7}"
+                else:                                    
+                    _message    =   f"{_row0} {chr(10)}"\
+                                    f"{_row1} {chr(10)}"\
+                                    f"{_row_sl_2} {chr(10)}"\
+                                    f"{_row3} {chr(10)}"\
+                                    f"{_row4} {chr(10)}"\
+                                    f"{_row5} {chr(10)}"\
+                                    f"{_row_sl_6} {chr(10)}"\
+                                    f"{_row_sl_7}"
             else:
                 
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','format_my_openorders_result',_inputs,'_type_result unknown ')}")
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','format_open_orders_result',_inputs,'_type_result unknown ')}")
                 return(self.response_tuple)
             
             # Add Message on List
@@ -1227,10 +1290,10 @@ class BinanceAPIClass:
         return(self.response_tuple)
     
     # Format Order Spot Result
-    def format_order_spot_result(self, _result, _type = None):
+    def format_create_order_spot_result(self, _result, _cancel = False, _type = None):
         
         # Prepare
-        _inputs             = f"{_result}"        
+        _inputs             = f"{_result}|{_cancel}|{_type}"        
         getcontext().prec   = 8
         _type_result        = None
         _date               = None
@@ -1238,11 +1301,19 @@ class BinanceAPIClass:
         # Get useful values
         if _type == 'stop_limit': # --> The type is not written on the output of a STOP_LOSS_LIMIT Order
             _type_result = 'STOP_LOSS_LIMIT'
+        elif _type == 'oco': # --> The type are 2 on the output of a OCO Order
+            _type_result = 'OCO'
         else:
-            _type_result = _result.get('type').upper()
+            if _result.get('type'):
+                _type_result = _result.get('type').upper()
+            else:
+                _type_result = 'OCO'
         
         if _result.get('transactTime') is not None:
-            _date = utility.timestamp_formatter(_result.get('transactTime')) 
+            _date = utility.timestamp_formatter(_result.get('transactTime'))
+
+        if _result.get('transactionTime') is not None:
+            _date_oco = utility.timestamp_formatter(_result.get('transactionTime'))             
                     
         # If Filled Build Price & Fee
         _price          = 0
@@ -1276,12 +1347,12 @@ class BinanceAPIClass:
             if _price_qty_tot != 0 and _qty_tot != 0:
                 _price_avg = _price_qty_tot / _qty_tot 
 
-
         # Common
         _row1   = f"Date: {_date}"
         _row2   = f"Status: {_result.get('status')}"        
         _row3   = f"Order Id: {_result.get('orderId')}"              
-        _row5   = f"Symbol: {_result.get('symbol')}" 
+        _row5   = f"Symbol: {_result.get('symbol')}"
+        _row6   = f"Side: {_result.get('side')}"         
 
         # Build Output
         if _type_result == 'MARKET': # Market Type Order
@@ -1294,11 +1365,10 @@ class BinanceAPIClass:
                 _temp1 = "Quantity Sold"
                 _temp2 = "Revenue"
             else:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','format_order_spot_result',_inputs,'Side unknown')}")
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','format_create_order_spot_result',_inputs,'Side unknown')}")
                 return(self.response_tuple)
 
-            _row_m_4 = f"Type: Market"
-            _row_m_6 = f"Side: {_result.get('side')}"            
+            _row_m_4 = f"Type: Market"         
             _row_m_7 = f"Price: {_price_avg}"
             _row_m_8 = f"Fee paid in {_fee_symbol}: {_fee}"
 
@@ -1317,7 +1387,7 @@ class BinanceAPIClass:
                         f"{_row3} {chr(10)}"\
                         f"{_row_m_4} {chr(10)}"\
                         f"{_row5} {chr(10)}"\
-                        f"{_row_m_6} {chr(10)}"\
+                        f"{_row6} {chr(10)}"\
                         f"{_row_m_7} {chr(10)}"\
                         f"{_row_m_8} {chr(10)}"\
                         f"{_row_m_9} {chr(10)}"\
@@ -1326,37 +1396,107 @@ class BinanceAPIClass:
         elif _type_result == 'LIMIT': # Limit Type Order
             
             # Build Rows            
-            _row_l_4 = f"Type: Limit"
-            _row_l_6 = f"Side: {_result.get('side')}"                        
-            _row_l_7 = f"Price: {_result.get('price')}"
+            _row_l_4 = f"Type: Limit"                      
+            _row_l_7 = f"Limit: {_result.get('price')}"
             _row_l_8 = f"Quantity: {_result.get('origQty')}"
             
             # Build Message
-            _message =  f"{_row1} {chr(10)}"\
-                        f"{_row2} {chr(10)}"\
-                        f"{_row3} {chr(10)}"\
-                        f"{_row_l_4} {chr(10)}"\
-                        f"{_row5} {chr(10)}"\
-                        f"{_row_l_6} {chr(10)}"\
-                        f"{_row_l_7} {chr(10)}"\
-                        f"{_row_l_8}" 
-
-        elif _type_result == 'STOP_LOSS_LIMIT': # Stop Limit Type Order
-
-            # Build Rows
-            _row_sl_4   =   f"Type: Stop-Limit"
-
-            # Build Message
-            _message    =   f"{_row1} {chr(10)}"\
+            if not _cancel:
+                _message =  f"{_row1} {chr(10)}"\
                             f"{_row2} {chr(10)}"\
                             f"{_row3} {chr(10)}"\
-                            f"{_row_sl_4} {chr(10)}"\
-                            f"{_row5}"
+                            f"{_row_l_4} {chr(10)}"\
+                            f"{_row5} {chr(10)}"\
+                            f"{_row6} {chr(10)}"\
+                            f"{_row_l_7} {chr(10)}"\
+                            f"{_row_l_8}"
+            else:
+                _message =  f"{_row2} {chr(10)}"\
+                            f"{_row3} {chr(10)}"\
+                            f"{_row_l_4} {chr(10)}"\
+                            f"{_row5} {chr(10)}"\
+                            f"{_row6} {chr(10)}"\
+                            f"{_row_l_7} {chr(10)}"\
+                            f"{_row_l_8}"
+
+        elif _type_result == 'STOP_LOSS_LIMIT': # Stop Limit Type Order
+            
+            """
+            L'output di uno Stop-Limit è molto povero.. per questo mostro molto poco.
+            Esempio di output: {'symbol': 'BTCUSDT', 'orderId': 2786196182, 'orderListId': -1, 'clientOrderId': 'p0qTfCHG0tAxFoivBqqI72', 'transactTime': 1596104181799}
+            """
+            
+            # Build Rows
+            _row_sl_2   =   f"Status: NEW"           
+            _row_sl_4   =   f"Type: Stop-Limit"
+            
+            # Build Message
+
+            if not _cancel:
+                _message    =   f"{_row1} {chr(10)}"\
+                                f"{_row_sl_2} {chr(10)}"\
+                                f"{_row3} {chr(10)}"\
+                                f"{_row_sl_4} {chr(10)}"\
+                                f"{_row5}"
+            else:
+                _row_sl_7   =   f"Stop: {_result.get('stopPrice')}"                                                             
+                _row_sl_8   =   f"Limit: {_result.get('price')}"
+                _row_sl_9   =   f"Quantity: {_result.get('origQty')}"                
+                _message    =   f"{_row2} {chr(10)}"\
+                                f"{_row3} {chr(10)}"\
+                                f"{_row_sl_4} {chr(10)}"\
+                                f"{_row5} {chr(10)}"\
+                                f"{_row6} {chr(10)}"\
+                                f"{_row_sl_7} {chr(10)}"\
+                                f"{_row_sl_8} {chr(10)}"\
+                                f"{_row_sl_9}"
+            
+        elif _type_result == 'OCO': # OCO Order Type: Stop-Limit + Limit
+            
+            # Build Rows
+            _title0     = ">> Order OCO <<"
+            _row_o_1    = f"Date: {_date_oco}"
+            _row_o_2    = f"Order Id: {_result.get('orderListId')}"
+            _row_o_3    = f"Symbol: {_result.get('symbol')}"
+            _row_o_4    = f"Side: {_result.get('orderReports')[0].get('side')}" 
+            _row_o_5    = f"Quantity: {_result.get('orderReports')[0].get('origQty')}"
+                
+            _title1     = "> Stop Limit"
+            _row_o_6    = f"Status: {_result.get('orderReports')[0].get('status')}"
+            _row_o_7    = f"Order Id: {_result.get('orderReports')[0].get('orderId')}"
+            _row_o_8    = f"Type: {_result.get('orderReports')[0].get('type')}"       
+            _row_o_9    = f"Stop: {_result.get('orderReports')[0].get('stopPrice')}"
+            _row_o_10   = f"Limit: {_result.get('orderReports')[0].get('price')}"
+            
+            _title2     = "> Limit"
+            _row_o_11   = f"Status: {_result.get('orderReports')[1].get('status')}"
+            _row_o_12   = f"Order Id: {_result.get('orderReports')[1].get('orderId')}"
+            _row_o_13   = f"Type: {_result.get('orderReports')[1].get('type')}"
+            _row_o_14   = f"Limit: {_result.get('orderReports')[1].get('price')}"
+            
+            # Build Message                                
+            _message =  f"{_title0} {chr(10)}"\
+                        f"{_row_o_1} {chr(10)}"\
+                        f"{_row_o_2} {chr(10)}"\
+                        f"{_row_o_3} {chr(10)}"\
+                        f"{_row_o_4} {chr(10)}"\
+                        f"{_row_o_5} {chr(10)}"\
+                        f"{_title1} {chr(10)}"\
+                        f"{_row_o_6} {chr(10)}"\
+                        f"{_row_o_7} {chr(10)}"\
+                        f"{_row_o_8} {chr(10)}"\
+                        f"{_row_o_9} {chr(10)}"\
+                        f"{_row_o_10} {chr(10)}"\
+                        f"{_title2} {chr(10)}"\
+                        f"{_row_o_11} {chr(10)}"\
+                        f"{_row_o_12} {chr(10)}"\
+                        f"{_row_o_13} {chr(10)}"\
+                        f"{_row_o_14}"
+                        
         else:
             
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','format_order_spot_result',_inputs,'_type_result unknown')}")
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','format_create_order_spot_result',_inputs,'_type_result unknown')}")
             return(self.response_tuple)
-        
         
         self.response_tuple = ('OK', _message)
         

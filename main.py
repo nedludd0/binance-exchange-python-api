@@ -4,6 +4,9 @@ from pprint import pprint
 # My Binance API Keys
 import config_api
 
+# My
+import utility
+
 def run(choose):
 
     # Prepare
@@ -86,34 +89,40 @@ def run(choose):
     # MakeOrder
     elif choose == 4:
 
-        _price  = None
+        _limit  = None
         _stop   = None
+        _price  = None       
         
         # Inputs
         print(f"{chr(10)}------------")        
         print(f"-- INPUTs --")
         print(f"------------")
         print(f"Symbol: {symbol}")
-        _type = input("Choose TYPE (market 1, limit 2 or stop_limit 3): ")
+        _type = input("Choose TYPE (market 1, limit 2, stop_limit 3 or oco 4): ")
         if int(_type) == 1:
-            _type = 'market'
+            _type_str = 'market'
         elif int(_type) == 2:
-            _type   = 'limit'
-            _price  = input("Choose PRICE: ")
+            _type_str   = 'limit'
+            _limit      = input("Choose LIMIT: ")
         elif int(_type) == 3:
-            _type   = 'stop_limit'
-            _stop   = input("Choose STOP: ")             
-            _price  = input("Choose PRICE: ")                                       
+            _type_str   = 'stop_limit'
+            _stop       = input("Choose STOP: ")             
+            _limit      = input("Choose LIMIT: ")                        
+        elif int(_type) == 4:
+            _type_str   = 'oco'
+            _stop       = input("Choose STOP  (sl) : ")            
+            _limit      = input("Choose LIMIT (sl) : ")                                                 
+            _price      = input("Choose PRICE (tp) : ")                                                       
         _side = input("Choose SIDE (buy or sell): ")
         _size = input("Choose SIZE %: ")        
         print(f"{chr(10)}")
         
         # Make Order
         _binance_client_obj = BinanceAPIClass(api_key, api_sec, symbol_first, symbol_second)
-        _out                = _binance_client_obj.create_order_spot(_type, _side, _size, _price, _stop)
+        _out                = _binance_client_obj.create_order_spot(_type_str, _side, _size, _limit, _stop, _price)
 
         if _out[0] == 'OK':
-            _formatted_output_temp = _binance_client_obj.format_order_spot_result( _out[1], _type)
+            _formatted_output_temp = _binance_client_obj.format_create_order_spot_result( _result = _out[1], _type = _type_str)
             _formatted_output      = _formatted_output_temp[1] 
             #_formatted_output      = _out[1]
             print(f"{chr(10)}------------")
@@ -136,7 +145,7 @@ def run(choose):
         _out                = _binance_client_obj.get_my_openorders()
 
         if _out[0] == 'OK':
-            _formatted_output_temp = _binance_client_obj.format_my_openorders_result(_out[1])
+            _formatted_output_temp = _binance_client_obj.format_open_orders_result(_out[1])
             _formatted_output      = _formatted_output_temp[1]
             #_formatted_output      =_out[1]             
             print(f"{chr(10)}------------")
@@ -169,7 +178,7 @@ def run(choose):
         _out                = _binance_client_obj.cancel_order_spot(_symbol, _orderid)
 
         if _out[0] == 'OK':
-            _formatted_output_temp = _binance_client_obj.format_order_spot_result( _out[1])
+            _formatted_output_temp = _binance_client_obj.format_create_order_spot_result( _result = _out[1], _cancel = True)
             _formatted_output      = _formatted_output_temp[1] 
             #_formatted_output      = _out[1]            
             print(f"{chr(10)}------------")
