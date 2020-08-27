@@ -12,9 +12,9 @@
 - calculation in % of the quantities to sell
 - calculation in % of the quantities to buy
 - get symbol info
-- submitting of market orders 
-- submitting of limit orders
-- submitting of stop limit orders
-- submitting of oco orders
+- submitting of **market orders** 
+- submitting of **limit orders**
+- submitting of **stop limit orders**
+- submitting of **oco orders**
 - see open orders
 - cancel open orders

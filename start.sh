@@ -1,2 +1,2 @@
 # Run from common virtualenv
-../venv/bin/python3.8 main.py
+../v-env3.8/bin/python3.8 main.py

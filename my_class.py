@@ -13,11 +13,11 @@ import utility
 
 class BinanceAPIClass:
     
-    def __init__(self, _api_key = None, _api_secret = None, _symbol_first = None, _symbol_second = None):
+    def __init__(self, _api_pub_key = None, _api_secret_key = None, _symbol_first = None, _symbol_second = None):
 
         # Instance Binance Client
-        if _api_key is not None and _api_secret is not None:
-            self.binance_client_obj = Client(_api_key, _api_secret)
+        if _api_pub_key is not None and _api_secret_key is not None:
+            self.binance_client_obj = Client(_api_pub_key, _api_secret_key)
         else:
             self.binance_client_obj = Client()
         
@@ -152,6 +152,26 @@ class BinanceAPIClass:
         
         return(self.response_tuple)
 
+    # Test connectivity to the Rest API getting the current server time.
+    def test_connectivity(self):
+        
+        # Prepare
+        _output         = {}
+        _server_time    = None
+        _inputs         = None
+
+        try:
+            _output  = self.binance_client_obj.get_server_time()
+            if len(_output) != 0:
+                _server_time = utility.timestamp_formatter(_output.get('serverTime'))
+            self.response_tuple = ('OK', _server_time)
+        except BinanceAPIException as e:
+            _error = str(e).split(":")[1]
+            self.response_tuple = ('NOK',  _error)
+        except Exception as e:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','test_connectivity',_inputs,traceback.format_exc(2))}")
+
+        return(self.response_tuple)
 
     """""""""""""""""""""""""""
     ACCOUNT ENDPOINTS - GENERIC
@@ -469,6 +489,7 @@ class BinanceAPIClass:
         _fee                = None
         _trade_fee_response = None
         _symbol_exists      = None
+        _trade_fee          = {}
         
         try:
 
@@ -496,7 +517,7 @@ class BinanceAPIClass:
             if _trade_fee_response is not None:
                 if (_trade_fee_response.get('success')):
                     _trade_fee = self.binance_client_obj.get_trade_fee(symbol=self.symbol).get('tradeFee')
-                    if bool(_trade_fee): # Checking if dictionary _trade_fee is empty
+                    if len(_trade_fee) != 0: # Checking if dictionary _trade_fee is empty
                         for t in _trade_fee:
                             if t.get('symbol') == self.symbol:
                                 if _what_fee == 'taker':
@@ -820,7 +841,7 @@ class BinanceAPIClass:
     ACCOUNT ENDPOINTS - ORDER
     """""""""""""""""""""""""""    
     # Create a Order Spot
-    def create_order_spot(self, _type, _side, _size, _limit, _stop, _price):
+    def create_order_spot(self, _type, _side, _size, _limit = None, _stop = None, _price = None):
         
         # Prepare
         _inputs         = f"{_type}|{_side}|{_size}|{_limit}|{_stop}|{_price}|{self.symbol_first}|{self.symbol_second}"
@@ -949,15 +970,15 @@ class BinanceAPIClass:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
 
         elif _type == 'oco':   
-            
-            if _stop is None:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order OCO without STOP input')}")
-                return(self.response_tuple)
-            
+
             if _limit is None:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order OCO without LIMIT input')}")
                 return(self.response_tuple)
 
+            if _stop is None:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order OCO without STOP input')}")
+                return(self.response_tuple)
+            
             if _price is None:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'Order OCO without PRICE input')}")
                 return(self.response_tuple)
@@ -984,85 +1005,12 @@ class BinanceAPIClass:
                 
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','create_order_spot',_inputs,traceback.format_exc())}")
 
-
         else:
             
             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'_type unknown')}")
 
-
         return(self.response_tuple)
 
-
-    
-        """
-        
-        >>> OUTPUT MARKET <<<<
-        
-        Minimize: 
-        
-        {'symbol': 'BNBUSDT', 'orderId': 537197438, 'orderListId': -1, 'clientOrderId': 'qZkxUqi4qLnbNrlhEQDEmN', 'transactTime': 1590848036857, 'price': '0.00000000', 'origQty': '1.00000000', 'executedQty': '1.00000000', 'cummulativeQuoteQty': '17.44210000', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'MARKET', 'side': 'BUY', 'fills': [{'price': '17.44210000', 'qty': '1.00000000', 'commission': '0.00075000', 'commissionAsset': 'BNB', 'tradeId': 61069267}]}
-        
-        Readable:
-        
-        {   'symbol': 'BNBUSDT', 
-            'orderId': 537197438, 
-            'orderListId': -1, 
-            'clientOrderId': 'qZkxUqi4qLnbNrlhEQDEmN', 
-            'transactTime': 1590848036857, 
-            'price': '0.00000000', 
-            'origQty': '1.00000000', 
-            'executedQty': '1.00000000', 
-            'cummulativeQuoteQty': '17.44210000', 
-            'status': 'FILLED', 
-            'timeInForce': 'GTC', 
-            'type': 'MARKET', 
-            'side': 'BUY', 
-            'fills': [  {   'price': '17.44210000', 
-                            'qty': '1.00000000', 
-                            'commission': '0.00075000', 
-                            'commissionAsset': 'BNB', 
-                            'tradeId': 61069267 }   ]
-        }
-        
-        >>> OUTPUT LIMIT <<<<
-        
-        Minimize:
-        
-        {'symbol': 'BTCUSDT', 'orderId': 2499415863, 'orderListId': -1, 'clientOrderId': 'RLVk6VD4oVuSJA0Ooc1h43', 'transactTime': 1592390815808, 'price': '9488.00000000', 'origQty': '0.00176300', 'executedQty': '0.00000000', 'cummulativeQuoteQty': '0.00000000', 'status': 'NEW', 'timeInForce': 'GTC', 'type': 'LIMIT', 'side': 'SELL', 'fills': []}
-
-        Readable:
-
-        {   'symbol': 'BTCUSDT', 
-            'orderId': 2499415863, 
-            'orderListId': -1, 
-            'clientOrderId': 'RLVk6VD4oVuSJA0Ooc1h43', 
-            'transactTime': 1592390815808, 
-            'price': '9488.00000000', 
-            'origQty': '0.00176300', 
-            'executedQty': '0.00000000', 
-            'cummulativeQuoteQty': '0.00000000', 
-            'status': 'NEW', 
-            'timeInForce': 'GTC', 
-            'type': 'LIMIT', 
-            'side': 'SELL', 
-            'fills': []
-        }
-
-        >>> OUTPUT STOP LIMIT <<<<
-        
-        Minimize:
-        
-        {'symbol': 'BTCUSDT', 'orderId': 2501977468, 'orderListId': -1, 'clientOrderId': 'lZSYY2UqSg64vc50Rrjkjq', 'transactTime': 1592413901290}
-
-        Readable:
-
-        {   'symbol': 'BTCUSDT', 
-            'orderId': 2501977468, 
-            'orderListId': -1, 
-            'clientOrderId': 'lZSYY2UqSg64vc50Rrjkjq', 
-            'transactTime': 1592413901290   }
-        
-        """
 
     # Cancel a Order Spot
     def cancel_order_spot(self, _symbol_input, _orderid):
@@ -1347,6 +1295,7 @@ class BinanceAPIClass:
             if _price_qty_tot != 0 and _qty_tot != 0:
                 _price_avg = _price_qty_tot / _qty_tot 
 
+
         # Common
         _row1   = f"Date: {_date}"
         _row2   = f"Status: {_result.get('status')}"        
@@ -1497,6 +1446,7 @@ class BinanceAPIClass:
             
             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','format_create_order_spot_result',_inputs,'_type_result unknown')}")
             return(self.response_tuple)
+        
         
         self.response_tuple = ('OK', _message)
         

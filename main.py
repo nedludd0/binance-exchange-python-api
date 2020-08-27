@@ -116,7 +116,7 @@ def run(choose):
         _side = input("Choose SIDE (buy or sell): ")
         _size = input("Choose SIZE %: ")        
         print(f"{chr(10)}")
-        
+
         # Make Order
         _binance_client_obj = BinanceAPIClass(api_key, api_sec, symbol_first, symbol_second)
         _out                = _binance_client_obj.create_order_spot(_type_str, _side, _size, _limit, _stop, _price)
@@ -219,12 +219,33 @@ def run(choose):
             print(_out[1])
             print(f"{chr(10)}")
 
+    # TestConnectivity
+    elif choose == 8:
+        
+        # Test connectivity to the Rest API getting the current server time
+        _binance_client_obj = BinanceAPIClass()
+        _out                = _binance_client_obj.test_connectivity()
+
+        if _out[0] == 'OK':
+            print(f"{chr(10)}------------")
+            print(f"-- RESULT --")
+            print(f"------------")             
+            print(_out[1])           
+        elif _out[0] == 'NOK':
+            print(f"{chr(10)}-----------")
+            print(f"-- ERROR --")
+            print(f"-----------") 
+            print(_out[1])
+            print(f"{chr(10)}")
+
+
     else:
         
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
+        
 
 if __name__ == "__main__":
     
-    choose = input(f"{chr(10)}CHOOSE WHAT TO DO (AvgPriceSymbol 1, RateLimits 2 , MyBalance 3 , MakeOrder 4, GetOpenOrders 5, CancelOrder 6, ConvertMyDust 7): ") 
+    choose = input(f"{chr(10)}CHOOSE WHAT TO DO (AvgPriceSymbol 1, RateLimits 2 , MyBalance 3 , MakeOrder 4, GetOpenOrders 5, CancelOrder 6, ConvertMyDust 7, TestConnectivity 8): ") 
     
     run(int(choose))
