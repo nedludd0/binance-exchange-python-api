@@ -122,15 +122,15 @@ def run(choose):
         _out                = _binance_client_obj.create_order_spot(_type_str, _side, _size, _limit, _stop, _price)
 
         if _out[0] == 'OK':
-            _formatted_output_temp = _binance_client_obj.format_create_order_spot_result( _result = _out[1], _type = _type_str)
+            _formatted_output_temp = _binance_client_obj.format_create_order_spot_result( _result = _out[1][0], _type = _type_str)
             _formatted_output      = _formatted_output_temp[1] 
-            #_formatted_output      = _out[1]
+            #_formatted_output      = _out[1][0]
             print(f"{chr(10)}------------")
             print(f"-- RESULT --")
             print(f"------------")            
-            print(f"{_formatted_output}")
-            #print(_formatted_output)            
-            print(f"{chr(10)}")            
+            print(f"{_formatted_output}")          
+            print(f"{chr(10)}------------")
+            print(f"Qta Total: {_out[1][1]}")    
         elif _out[0] == 'NOK':
             print(f"{chr(10)}-----------")
             print(f"-- ERROR --")
@@ -241,6 +241,7 @@ def run(choose):
 
     else:
         
+
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
         
 
