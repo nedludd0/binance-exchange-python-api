@@ -15,12 +15,6 @@ class BinanceAPIClass:
     
     def __init__(self, _api_pub_key = None, _api_secret_key = None, _symbol_first = None, _symbol_second = None):
 
-        # Instance Binance Client
-        if _api_pub_key is not None and _api_secret_key is not None:
-            self.binance_client_obj = Client(_api_pub_key, _api_secret_key)
-        else:
-            self.binance_client_obj = Client()
-        
         # Symbol
         if _symbol_first is not None:
             self.symbol_first = _symbol_first.upper()
@@ -28,13 +22,44 @@ class BinanceAPIClass:
             self.symbol_second = _symbol_second.upper()
         if _symbol_first is not None and _symbol_second is not None:
             self.symbol = f"{_symbol_first}{_symbol_second}".upper()
+            
         # Working
         self.response_tuple = None
-
-
+        self.client         = None
+        
+        # Build Client
+        self.client = self.build_client(_api_pub_key, _api_secret_key)
+        
     """""""""""""""""""""
     MY UTILITY
     """""""""""""""""""""
+    def build_client(self, _api_pub_key = None, _api_secret_key = None):
+
+        # Prepare
+        _inputs = None
+        _temp   = None
+
+        # Instance Binance Client
+        if _api_pub_key is not None and _api_secret_key is not None:
+            try:
+                _temp               = Client( api_key = _api_pub_key, api_secret = _api_secret_key, requests_params = { "timeout" : 20 } )
+                self.response_tuple = ('OK', _temp)
+            except BinanceAPIException as e:
+                _error = str(e).split(":")[1]
+                self.response_tuple = ('NOK',  _error)
+            except Exception as e:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','build_client',_inputs,traceback.format_exc(2))}")      
+        else:
+            try:            
+                _temp               = Client( requests_params = { "timeout" : 20 } )
+                self.response_tuple = ('OK', _temp)
+            except BinanceAPIException as e:
+                _error = str(e).split(":")[1]
+                self.response_tuple = ('NOK',  _error)
+            except Exception as e:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','build_client',_inputs,traceback.format_exc(2))}")       
+        return(self.response_tuple)
+    
     # Truncate _qta_start to the largest multiple of _step_size for LOT_SIZE
     def truncate_by_step_size(self, _qta_start, _step_size):
         
@@ -77,10 +102,10 @@ class BinanceAPIClass:
             
             if _symbol_input is None:
                 _inputs         = f"{self.symbol}"
-                _symbol_info    = self.binance_client_obj.get_symbol_info(symbol=self.symbol)
+                _symbol_info    = self.client[1].get_symbol_info(symbol=self.symbol)
             else:
                 _inputs         = f"{_symbol_input}"
-                _symbol_info    = self.binance_client_obj.get_symbol_info(symbol=_symbol_input)
+                _symbol_info    = self.client[1].get_symbol_info(symbol=_symbol_input)
             
             if _symbol_info is not None:
                 self.response_tuple = ('OK', f"Symbol {_inputs} exist")
@@ -109,7 +134,7 @@ class BinanceAPIClass:
         
         try:
     
-            _exchange_info  = self.binance_client_obj.get_exchange_info()
+            _exchange_info  = self.client[1].get_exchange_info()
             
             if _exchange_info is not None:
             
@@ -161,7 +186,7 @@ class BinanceAPIClass:
         _inputs         = None
 
         try:
-            _output  = self.binance_client_obj.get_server_time()
+            _output  = self.client[1].get_server_time()
             if len(_output) != 0:
                 _server_time = utility.timestamp_formatter(_output.get('serverTime'))
             self.response_tuple = ('OK', _server_time)
@@ -184,7 +209,7 @@ class BinanceAPIClass:
         _dust   = None
         
         try:
-            _dust = self.binance_client_obj.get_dust_log()
+            _dust = self.client[1].get_dust_log()
             self.response_tuple = ('OK', _dust)
             
         except BinanceAPIException as e:
@@ -263,10 +288,10 @@ class BinanceAPIClass:
         
         try:
             if _symbol_input is None:
-                _my_openorders  = self.binance_client_obj.get_open_orders()
+                _my_openorders  = self.client[1].get_open_orders()
                 self.response_tuple = ('OK', _my_openorders)
             else:
-                _my_openorders  = self.binance_client_obj.get_open_orders(symbol=_symbol_input)
+                _my_openorders  = self.client[1].get_open_orders(symbol=_symbol_input)
                 self.response_tuple = ('OK', _my_openorders)
                 
         except BinanceAPIException as e:
@@ -302,7 +327,7 @@ class BinanceAPIClass:
         _tot_usdt           = 0                       
         
         try:
-            _account = self.binance_client_obj.get_account()
+            _account = self.client[1].get_account()
     
             if "balances" in _account:
                 
@@ -429,10 +454,10 @@ class BinanceAPIClass:
 
             if _symbol_input is None:
                 _inputs         = f"{_what_filter}|{self.symbol}"
-                _symbol_info    = self.binance_client_obj.get_symbol_info(symbol=self.symbol)
+                _symbol_info    = self.client[1].get_symbol_info(symbol=self.symbol)
             else:
                 _inputs         = f"{_what_filter}|{_symbol_input}"
-                _symbol_info    = self.binance_client_obj.get_symbol_info(symbol=_symbol_input)
+                _symbol_info    = self.client[1].get_symbol_info(symbol=_symbol_input)
             
             if _symbol_info is not None:
                 
@@ -502,7 +527,7 @@ class BinanceAPIClass:
                     self.response_tuple = ('NOK', _symbol_exists[1])
                     return(self.response_tuple)             
                 
-                _trade_fee_response = self.binance_client_obj.get_trade_fee(symbol=self.symbol)
+                _trade_fee_response = self.client[1].get_trade_fee(symbol=self.symbol)
             else:
                 _inputs = f"{_symbol_input}|{_what_fee}"
                 
@@ -512,11 +537,11 @@ class BinanceAPIClass:
                     self.response_tuple = ('NOK',  _symbol_exists[1])
                     return(self.response_tuple)
 
-                _trade_fee_response = self.binance_client_obj.get_trade_fee(symbol=_symbol_input)
+                _trade_fee_response = self.client[1].get_trade_fee(symbol=_symbol_input)
 
             if _trade_fee_response is not None:
                 if (_trade_fee_response.get('success')):
-                    _trade_fee = self.binance_client_obj.get_trade_fee(symbol=self.symbol).get('tradeFee')
+                    _trade_fee = self.client[1].get_trade_fee(symbol=self.symbol).get('tradeFee')
                     if len(_trade_fee) > 0: # Checking if dictionary _trade_fee is empty
                         for t in _trade_fee:
                             if t.get('symbol') == self.symbol:
@@ -565,7 +590,7 @@ class BinanceAPIClass:
                     self.response_tuple = ('NOK', _symbol_exists[1])
                     return(self.response_tuple)               
                 
-                _avg_price_response = self.binance_client_obj.get_avg_price(symbol=self.symbol)
+                _avg_price_response = self.client[1].get_avg_price(symbol=self.symbol)
             else:
                 _inputs = _symbol_input
                 
@@ -575,7 +600,7 @@ class BinanceAPIClass:
                     self.response_tuple = ('NOK',  _symbol_exists[1])
                     return(self.response_tuple)                
                 
-                _avg_price_response = self.binance_client_obj.get_avg_price(symbol=_symbol_input)
+                _avg_price_response = self.client[1].get_avg_price(symbol=_symbol_input)
             
             if _avg_price_response is not None:
                 _price = Decimal(_avg_price_response.get('price'))
@@ -604,7 +629,7 @@ class BinanceAPIClass:
         _inputs                 = f"{self.symbol_first}|{self.symbol_second}|{_what_symbol_partial}"
         
         try:
-            _asset_balance_response = self.binance_client_obj.get_asset_balance(asset=_what_symbol_partial)
+            _asset_balance_response = self.client[1].get_asset_balance(asset=_what_symbol_partial)
         
             if _asset_balance_response is not None:
                 if _asset_balance_response.get('free') is not None:
@@ -867,18 +892,18 @@ class BinanceAPIClass:
 
         # Choose TYPE & FEE
         if _type == 'market':
-            _client_type        = self.binance_client_obj.ORDER_TYPE_MARKET
+            _client_type        = self.client[1].ORDER_TYPE_MARKET
             _what_fee           = 'taker' # --> I'm going to Market so it's a taker
         elif _type == 'limit':
-            _client_type        = self.binance_client_obj.ORDER_TYPE_LIMIT
-            _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
+            _client_type        = self.client[1].ORDER_TYPE_LIMIT
+            _client_timeinforce = self.client[1].TIME_IN_FORCE_GTC            
             _what_fee           = 'maker' # --> I'm going to Price so it's a maker
         elif _type == 'stop_limit':
-            _client_type        = self.binance_client_obj.ORDER_TYPE_STOP_LOSS_LIMIT
-            _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
+            _client_type        = self.client[1].ORDER_TYPE_STOP_LOSS_LIMIT
+            _client_timeinforce = self.client[1].TIME_IN_FORCE_GTC            
             _what_fee           = 'maker' # --> I'm going to Price so it's a maker
         elif _type == 'oco':
-            _client_timeinforce = self.binance_client_obj.TIME_IN_FORCE_GTC            
+            _client_timeinforce = self.client[1].TIME_IN_FORCE_GTC            
             _what_fee           = 'maker' # --> I'm going to Price so it's a maker               
         else:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','create_order_spot',_inputs,'_type unknown')}")
@@ -887,7 +912,7 @@ class BinanceAPIClass:
         # Choose SIDE and calculate QUANTITY
         if _side == 'sell':
     
-            _client_side        = self.binance_client_obj.SIDE_SELL
+            _client_side        = self.client[1].SIDE_SELL
             _quantity_result    = self.get_my_quantity_to_sell(_type, _size, _limit)
             if _quantity_result[0] == 'OK':
                 _quantity_sized = _quantity_result[1][0]
@@ -898,7 +923,7 @@ class BinanceAPIClass:
                  
         elif _side == 'buy':
             
-            _client_side        = self.binance_client_obj.SIDE_BUY      
+            _client_side        = self.client[1].SIDE_BUY      
             _quantity_result    = self.get_my_quantity_to_buy(_what_fee, _type, _size, _how2get_qta2buy, _limit)
             if _quantity_result[0] == 'OK':
                 _quantity_sized = _quantity_result[1][0]
@@ -916,7 +941,7 @@ class BinanceAPIClass:
         if _type == 'market':
 
             try:
-                _order = self.binance_client_obj.create_order(  symbol      = self.symbol,
+                _order = self.client[1].create_order(  symbol      = self.symbol,
                                                                 side        = _client_side,
                                                                 type        = _client_type,
                                                                 quantity    = _quantity_sized)
@@ -939,7 +964,7 @@ class BinanceAPIClass:
                 return(self.response_tuple)
             
             try:
-                _order = self.binance_client_obj.create_order(  symbol      = self.symbol,
+                _order = self.client[1].create_order(  symbol      = self.symbol,
                                                                 side        = _client_side,
                                                                 type        = _client_type,
                                                                 timeInForce = _client_timeinforce,
@@ -969,7 +994,7 @@ class BinanceAPIClass:
                 
             try:
                 
-                _order = self.binance_client_obj.create_order(  symbol      = self.symbol,
+                _order = self.client[1].create_order(  symbol      = self.symbol,
                                                                 side        = _client_side,
                                                                 type        = _client_type,
                                                                 timeInForce = _client_timeinforce,
@@ -1004,7 +1029,7 @@ class BinanceAPIClass:
                 
             try:
 
-                _order = self.binance_client_obj.create_oco_order(  symbol              = self.symbol,
+                _order = self.client[1].create_oco_order(  symbol              = self.symbol,
                                                                     side                = _client_side,
                                                                     stopLimitTimeInForce= _client_timeinforce,
                                                                     quantity            = _quantity_sized,
@@ -1030,7 +1055,6 @@ class BinanceAPIClass:
 
         return(self.response_tuple)
 
-
     # Cancel a Order Spot
     def cancel_order_spot(self, _symbol_input, _orderid):
 
@@ -1040,7 +1064,7 @@ class BinanceAPIClass:
         
         try:
             
-            _result_raw = self.binance_client_obj.cancel_order( symbol = _symbol_input, orderId =_orderid)
+            _result_raw = self.client[1].cancel_order( symbol = _symbol_input, orderId =_orderid)
             
             self.response_tuple = ('OK', _result_raw)
 
@@ -1096,7 +1120,7 @@ class BinanceAPIClass:
         _asset_qta          = 0
         
         try:
-            _result_raw = self.binance_client_obj.transfer_dust(asset=_symbol_input_clean)
+            _result_raw = self.client[1].transfer_dust(asset=_symbol_input_clean)
             
         except BinanceAPIException as e:
             
