@@ -28,7 +28,8 @@ class BinanceAPIClass:
         self.client         = None
         
         # Build Client
-        self.client = self.build_client(_api_pub_key, _api_secret_key)
+        self.request_timeout    = 20
+        self.client             = self.build_client(_api_pub_key, _api_secret_key)
         
     """""""""""""""""""""
     MY UTILITY
@@ -36,13 +37,13 @@ class BinanceAPIClass:
     def build_client(self, _api_pub_key = None, _api_secret_key = None):
 
         # Prepare
-        _inputs = None
+        _inputs = f"{self.request_timeout}"
         _temp   = None
 
         # Instance Binance Client
         if _api_pub_key is not None and _api_secret_key is not None:
             try:
-                _temp               = Client( api_key = _api_pub_key, api_secret = _api_secret_key, requests_params = { "timeout" : 20 } )
+                _temp               = Client( api_key = _api_pub_key, api_secret = _api_secret_key, requests_params = { "timeout" : self.request_timeout } )
                 self.response_tuple = ('OK', _temp)
             except BinanceAPIException as e:
                 _error = str(e).split(":")[1]
@@ -51,13 +52,14 @@ class BinanceAPIClass:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','build_client',_inputs,traceback.format_exc(2))}")      
         else:
             try:            
-                _temp               = Client( requests_params = { "timeout" : 20 } )
+                _temp               = Client( requests_params = { "timeout" : self.request_timeout } )
                 self.response_tuple = ('OK', _temp)
             except BinanceAPIException as e:
                 _error = str(e).split(":")[1]
                 self.response_tuple = ('NOK',  _error)
             except Exception as e:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','build_client',_inputs,traceback.format_exc(2))}")       
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','build_client',_inputs,traceback.format_exc(2))}") 
+                      
         return(self.response_tuple)
     
     # Truncate _qta_start to the largest multiple of _step_size for LOT_SIZE
@@ -1224,7 +1226,7 @@ class BinanceAPIClass:
                 _row_l_6    =   f"Price: {_dict.get('price')}"
                 
                 if _dict.get('orderListId') != -1:
-                    _row_o_1    =   f"Order OCO Id: {_dict.get('orderListId')}"
+                    _row_o_1    =   f"OrderOCOId: {_dict.get('orderListId')}"
                     _message    =   f"{_row0} {chr(10)}"\
                                     f"{_row_o_1} {chr(10)}"\
                                     f"{_row1} {chr(10)}"\
@@ -1249,7 +1251,7 @@ class BinanceAPIClass:
                 _row_sl_7   =   f"Stop: {_dict.get('stopPrice')}"          
                 
                 if _dict.get('orderListId') != -1:                
-                    _row_o_1    =   f"Order OCO Id: {_dict.get('orderListId')}"
+                    _row_o_1    =   f"OrderOCOId: {_dict.get('orderListId')}"
                     _message    =   f"{_row0} {chr(10)}"\
                                     f"{_row_o_1} {chr(10)}"\
                                     f"{_row1} {chr(10)}"\
