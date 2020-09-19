@@ -659,17 +659,20 @@ class BinanceAPIClass:
         _get_tot_symbol                 = f"tot_{self.symbol_second.lower()}" # build Wallet Dict Key
         
         symbol_bal_second_free          = None       
-        symbol_bal_second_tot_estimated = None
-        symbol_bal_to_use               = None
-        symbol_bal_to_use_size          = None                
+        symbol_bal_second_tot_estimated = None              
         symbol_step_size                = None
         symbol_min_qty                  = None
         symbol_min_notional             = None        
         symbol_fee                      = None
         symbol_price                    = None
         symbol_fee_perc                 = None
-        quantity_start                  = None
-        quantity_end                    = None
+        
+        # Prepare Quantity Vars
+        quantity_pre_size_applied       = None
+        quantity_post_size_applied      = None     
+        quantity_pre_stepSize_applied   = None
+        quantity_post_stepSize_applied  = None
+        quantity_processed_final        = None      
 
         # By default rounding setting in python is ROUND_HALF_EVEN
         getcontext().rounding = ROUND_DOWN
@@ -688,23 +691,23 @@ class BinanceAPIClass:
             
             # Build bal to use & size
             if _symbol_bal_second_tot_estimated[0] == 'OK':
-                symbol_bal_to_use       = _symbol_bal_second_tot_estimated[1][0].get('totals').get(_get_tot_symbol)
-                symbol_bal_to_use_size  = round( symbol_bal_to_use / 100 *  Decimal(_size) , 5 )
+                quantity_pre_size_applied   = _symbol_bal_second_tot_estimated[1][0].get('totals').get(_get_tot_symbol)
+                quantity_post_size_applied  = round( quantity_pre_size_applied / 100 *  Decimal(_size) , 5 )
             else:
                 self.response_tuple = ('NOK', _symbol_bal_second_tot_estimated[1])
                 return(self.response_tuple)
                 
             # STOP Qta to sell TO Real Free Qta
-            if symbol_bal_to_use_size > _symbol_bal_second_free[1]:
-                symbol_bal_to_use_size = _symbol_bal_second_free[1] 
+            if quantity_post_size_applied > _symbol_bal_second_free[1]:
+                quantity_post_size_applied = _symbol_bal_second_free[1] 
         
         # GET OWNED AVAILABLE ASSET BALANCE
         elif _how2get_qta2buy == 'only_available':
              
             # Build bal to use & size
             if _symbol_bal_second_free[0] == 'OK':
-                symbol_bal_to_use       = _symbol_bal_second_free[1]
-                symbol_bal_to_use_size  = round( symbol_bal_to_use / 100 *  Decimal(_size) , 5 )
+                quantity_pre_size_applied   = _symbol_bal_second_free[1]
+                quantity_post_size_applied  = round( quantity_pre_size_applied / 100 *  Decimal(_size) , 5 )
             else:
                 self.response_tuple = ('NOK', _symbol_bal_second_free[1])
                 return(self.response_tuple)
@@ -755,28 +758,31 @@ class BinanceAPIClass:
             symbol_fee              = _symbol_fee[1]        
             symbol_price            = _symbol_price[1]
                            
-            symbol_fee_perc         = (100 - symbol_fee) / 100 
-            quantity_start          = (symbol_bal_to_use_size / symbol_price) * symbol_fee_perc
-            quantity_end            = self.truncate_by_step_size(quantity_start, symbol_step_size)
+            symbol_fee_perc                 = (100 - symbol_fee) / 100 
+            quantity_pre_stepSize_applied   = (quantity_post_size_applied / symbol_price) * symbol_fee_perc
+            quantity_post_stepSize_applied  = self.truncate_by_step_size(quantity_pre_stepSize_applied, symbol_step_size)
             
-            if quantity_end[0] == 'OK':
+            if quantity_post_stepSize_applied[0] == 'OK':
                 
-                quantity_temp = quantity_end[1]
-                if quantity_temp > symbol_min_qty:
+                quantity_processed_final = quantity_post_stepSize_applied[1]
+                
+                if quantity_processed_final > symbol_min_qty:
                     
-                    if (symbol_price * quantity_temp) > symbol_min_notional:
+                    if (symbol_price * quantity_processed_final) > symbol_min_notional:
                         
+                        """
                         if _size == 100:
-                            quantity_temp = quantity_temp - symbol_step_size # To avoid "Account has insufficient balance for requested action" if there is a pump in progress
-                    
-                        self.response_tuple = ('OK', tuple((quantity_temp, symbol_bal_to_use)) )
+                            quantity_processed_final = quantity_processed_final - symbol_step_size # To avoid "Account has insufficient balance for requested action" if there is a pump in progress
+                        """
+                        
+                        self.response_tuple = ('OK', tuple((quantity_processed_final, quantity_pre_size_applied, quantity_post_size_applied)) )
                     
                     else:
-                        _msg                = f"Quantity * Price (= {quantity_start*symbol_price:.10f}) to make BUY is not > Symbol Min Notional Qty (= {symbol_min_notional})"
+                        _msg                = f"Quantity * Price (= {quantity_pre_stepSize_applied*symbol_price:.10f}) to make BUY is not > Symbol Min Notional Qty (= {symbol_min_notional})"
                         self.response_tuple = ('NOK',  f"{ utility.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
 
                 else:
-                    _msg                = f"Quantity (= {quantity_start:.10f}) to make BUY is not > Symbol Min Qty (= {symbol_min_qty})"
+                    _msg                = f"Quantity (= {quantity_pre_stepSize_applied:.10f}) to make BUY is not > Symbol Min Qty (= {symbol_min_qty})"
                     self.response_tuple = ('NOK',  f"{ utility.my_log('Error','get_my_quantity_to_buy',_inputs,_msg)}")
 
         else:
@@ -788,24 +794,26 @@ class BinanceAPIClass:
     def get_my_quantity_to_sell(self, _type, _size, _price = None):
         
         # Prepare
-        _inputs                 = f"{_type}|{_size}|{_price}|{self.symbol_first}|{self.symbol_second}"
-
-        symbol_bal_to_use       = None
-        symbol_bal_to_use_size  = None        
-        symbol_step_size        = None
-        symbol_min_qty          = None
-        symbol_min_notional     = None
-        symbol_price            = None        
-        quantity_start          = None
-        quantity_end            = None
-
+        _inputs                     = f"{_type}|{_size}|{_price}|{self.symbol_first}|{self.symbol_second}"      
+        symbol_step_size            = None
+        symbol_min_qty              = None
+        symbol_min_notional         = None
+        symbol_price                = None
+        
+        # Prepare Quantity Vars
+        quantity_pre_size_applied       = None
+        quantity_post_size_applied      = None     
+        quantity_pre_stepSize_applied   = None
+        quantity_post_stepSize_applied  = None
+        quantity_processed_final        = None
+      
         # Get Owned Asset Balance Free
         _symbol_bal_first_free = self.get_my_asset_balance_free(self.symbol_first)       
 
         # Build bal to use & size
         if _symbol_bal_first_free[0] == 'OK':
-            symbol_bal_to_use       = _symbol_bal_first_free[1]
-            symbol_bal_to_use_size  = symbol_bal_to_use / 100 *  Decimal(_size)
+            quantity_pre_size_applied   = _symbol_bal_first_free[1]
+            quantity_post_size_applied  = quantity_pre_size_applied / 100 *  Decimal(_size)
         else:
             self.response_tuple = ('NOK',  _symbol_bal_first_free[1])
             return(self.response_tuple)
@@ -848,22 +856,22 @@ class BinanceAPIClass:
             symbol_min_notional = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
             symbol_price        = _symbol_price[1]
                         
-            quantity_start      = Decimal(symbol_bal_to_use_size)
-            quantity_end        = self.truncate_by_step_size(quantity_start, symbol_step_size)
+            quantity_pre_stepSize_applied   = Decimal(quantity_post_size_applied)
+            quantity_post_stepSize_applied  = self.truncate_by_step_size(quantity_pre_stepSize_applied, symbol_step_size)
             
-            if quantity_end[0] == 'OK':
+            if quantity_post_stepSize_applied[0] == 'OK':
                 
-                quantity_temp = quantity_end[1]
-                if quantity_temp > symbol_min_qty:
+                quantity_processed_final = quantity_post_stepSize_applied[1]
+                if quantity_processed_final > symbol_min_qty:
                     
-                    if (symbol_price * quantity_temp) > symbol_min_notional:
-                        self.response_tuple = ('OK', tuple(( quantity_temp, symbol_bal_to_use )) )
+                    if (symbol_price * quantity_processed_final) > symbol_min_notional:
+                        self.response_tuple = ('OK', tuple(( quantity_processed_final, quantity_pre_size_applied, quantity_post_size_applied )) )
                     else:
-                        _msg                = f"Quantity * Price (= {quantity_start*symbol_price:.10f}) to make SELL is not > Symbol Min Notional Qty (= {symbol_min_notional})"
+                        _msg                = f"Quantity * Price (= {quantity_pre_stepSize_applied*symbol_price:.10f}) to make SELL is not > Symbol Min Notional Qty (= {symbol_min_notional})"
                         self.response_tuple = ('NOK',  f"{ utility.my_log('Error','get_my_quantity_to_sell',_inputs,_msg)}")
                         
                 else:
-                    _msg                = f"Quantity (= {quantity_start:.10f}) to make SELL is not > Symbol Min Qty (= {symbol_min_qty})"
+                    _msg                = f"Quantity (= {quantity_pre_stepSize_applied:.10f}) to make SELL is not > Symbol Min Qty (= {symbol_min_qty})"
                     self.response_tuple = ('NOK',  f"{ utility.my_log('Error','get_my_quantity_to_sell',_inputs,_msg)}")
 
         else:
@@ -879,12 +887,13 @@ class BinanceAPIClass:
     def create_order_spot(self, _type, _side, _size, _limit = None, _stop = None, _price = None):
         
         # Prepare
-        _inputs             = f"{_type}|{_side}|{_size}|{_limit}|{_stop}|{_price}|{self.symbol_first}|{self.symbol_second}"
-        _how2get_qta2buy    = 'only_available'
-        _quantity_result    = None
-        _quantity_total     = None         
-        _quantity_sized     = None       
-        _symbol_exists      = None
+        _inputs                     = f"{_type}|{_side}|{_size}|{_limit}|{_stop}|{_price}|{self.symbol_first}|{self.symbol_second}"
+        _how2get_qta2buy            = 'only_available'
+        _quantity_calculated_result = None
+        _quantity_to_use            = None         
+        _quantity_pre_size_applied  = None         
+        _quantity_post_size_applied = None       
+        _symbol_exists              = None
         
         # Check if Symbol Exists
         _symbol_exists = self.check_if_symbol_exists()
@@ -914,24 +923,26 @@ class BinanceAPIClass:
         # Choose SIDE and calculate QUANTITY
         if _side == 'sell':
     
-            _client_side        = self.client[1].SIDE_SELL
-            _quantity_result    = self.get_my_quantity_to_sell(_type, _size, _limit)
-            if _quantity_result[0] == 'OK':
-                _quantity_sized = _quantity_result[1][0]
-                _quantity_total = _quantity_result[1][1]
+            _client_side                = self.client[1].SIDE_SELL
+            _quantity_calculated_result = self.get_my_quantity_to_sell(_type, _size, _limit)
+            if _quantity_calculated_result[0] == 'OK':
+                _quantity_to_use            = _quantity_calculated_result[1][0]
+                _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
+                _quantity_post_size_applied = _quantity_calculated_result[1][2]                
             else:
-                self.response_tuple = ('NOK',  _quantity_result[1])
+                self.response_tuple = ('NOK',  _quantity_calculated_result[1])
                 return(self.response_tuple)                         
                  
         elif _side == 'buy':
             
-            _client_side        = self.client[1].SIDE_BUY      
-            _quantity_result    = self.get_my_quantity_to_buy(_what_fee, _type, _size, _how2get_qta2buy, _limit)
-            if _quantity_result[0] == 'OK':
-                _quantity_sized = _quantity_result[1][0]
-                _quantity_total = _quantity_result[1][1]
+            _client_side                = self.client[1].SIDE_BUY      
+            _quantity_calculated_result = self.get_my_quantity_to_buy(_what_fee, _type, _size, _how2get_qta2buy, _limit)
+            if _quantity_calculated_result[0] == 'OK':
+                _quantity_to_use            = _quantity_calculated_result[1][0]
+                _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
+                _quantity_post_size_applied = _quantity_calculated_result[1][2]                
             else:
-                self.response_tuple = ('NOK',  _quantity_result[1])
+                self.response_tuple = ('NOK',  _quantity_calculated_result[1])
                 return(self.response_tuple)
             
         else:
@@ -943,12 +954,12 @@ class BinanceAPIClass:
         if _type == 'market':
 
             try:
-                _order = self.client[1].create_order(  symbol      = self.symbol,
-                                                                side        = _client_side,
-                                                                type        = _client_type,
-                                                                quantity    = _quantity_sized)
+                _order = self.client[1].create_order(   symbol      = self.symbol,
+                                                        side        = _client_side,
+                                                        type        = _client_type,
+                                                        quantity    = _quantity_to_use   )
                                                                 
-                self.response_tuple = ('OK', tuple(( _order, _quantity_total)) )
+                self.response_tuple = ('OK', tuple(( _order, _quantity_pre_size_applied, _quantity_post_size_applied)) )
             
             except BinanceAPIException as e:
             
@@ -966,14 +977,14 @@ class BinanceAPIClass:
                 return(self.response_tuple)
             
             try:
-                _order = self.client[1].create_order(  symbol      = self.symbol,
-                                                                side        = _client_side,
-                                                                type        = _client_type,
-                                                                timeInForce = _client_timeinforce,
-                                                                quantity    = _quantity_sized,
-                                                                price       = _limit)
+                _order = self.client[1].create_order(   symbol      = self.symbol,
+                                                        side        = _client_side,
+                                                        type        = _client_type,
+                                                        timeInForce = _client_timeinforce,
+                                                        quantity    = _quantity_to_use,
+                                                        price       = _limit    )
                                                                 
-                self.response_tuple = ('OK', tuple(( _order, _quantity_total)) )
+                self.response_tuple = ('OK', tuple(( _order, _quantity_pre_size_applied, _quantity_post_size_applied)) )
             
             except BinanceAPIException as e:
             
@@ -996,15 +1007,15 @@ class BinanceAPIClass:
                 
             try:
                 
-                _order = self.client[1].create_order(  symbol      = self.symbol,
-                                                                side        = _client_side,
-                                                                type        = _client_type,
-                                                                timeInForce = _client_timeinforce,
-                                                                quantity    = _quantity_sized,
-                                                                price       = _limit,
-                                                                stopPrice   = _stop)
+                _order = self.client[1].create_order(   symbol      = self.symbol,
+                                                        side        = _client_side,
+                                                        type        = _client_type,
+                                                        timeInForce = _client_timeinforce,
+                                                        quantity    = _quantity_to_use,
+                                                        price       = _limit,
+                                                        stopPrice   = _stop )
 
-                self.response_tuple = ('OK', tuple(( _order, _quantity_total)) )
+                self.response_tuple = ('OK', tuple(( _order, _quantity_pre_size_applied, _quantity_post_size_applied)) )
                 
             except BinanceAPIException as e:
             
@@ -1031,16 +1042,16 @@ class BinanceAPIClass:
                 
             try:
 
-                _order = self.client[1].create_oco_order(  symbol              = self.symbol,
-                                                                    side                = _client_side,
-                                                                    stopLimitTimeInForce= _client_timeinforce,
-                                                                    quantity            = _quantity_sized,
-                                                                    stopLimitPrice      = _limit,                                                            
-                                                                    stopPrice           = _stop,
-                                                                    price               = _price)
+                _order = self.client[1].create_oco_order(   symbol                  = self.symbol,
+                                                            side                    = _client_side,
+                                                            stopLimitTimeInForce    = _client_timeinforce,
+                                                            quantity                = _quantity_to_use,
+                                                            stopLimitPrice          = _limit,                                                            
+                                                            stopPrice               = _stop,
+                                                            price                   = _price    )
 
                 
-                self.response_tuple = ('OK', tuple(( _order, _quantity_total)) )
+                self.response_tuple = ('OK', tuple(( _order, _quantity_pre_size_applied, _quantity_post_size_applied)) )
                 
             except BinanceAPIException as e:
             
