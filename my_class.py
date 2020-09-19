@@ -100,14 +100,19 @@ class BinanceAPIClass:
         _symbol_info    = None    
         _inputs         = None 
         
+        # Prepare Inputs
+        if _symbol_input is None:
+            _inputs = f"{self.symbol}"
+            _symbol = self.symbol
+        else:
+            _inputs = f"{_symbol_input}"
+            _symbol = _symbol_input                
+
+        # Work
         try:
             
-            if _symbol_input is None:
-                _inputs         = f"{self.symbol}"
-                _symbol_info    = self.client[1].get_symbol_info(symbol=self.symbol)
-            else:
-                _inputs         = f"{_symbol_input}"
-                _symbol_info    = self.client[1].get_symbol_info(symbol=_symbol_input)
+            # Check
+            _symbol_info = self.client[1].get_symbol_info(symbol=_symbol)
             
             if _symbol_info is not None:
                 self.response_tuple = ('OK', f"Symbol {_inputs} exist")
@@ -581,28 +586,28 @@ class BinanceAPIClass:
         _price              = None
         _avg_price_response = None
         _symbol_exists      = None
+        _symbol_check       = None        
         
+        # Prepare Inputs
+        if _symbol_input is None:
+            _inputs         = f"{self.symbol}"
+            _symbol         = self.symbol            
+        else:
+            _inputs         = f"{_symbol_input}"
+            _symbol         = _symbol_input
+            _symbol_check   = _symbol_input
+
+        # Work
         try:
-            if _symbol_input is None:
-                _inputs = self.symbol
-                
-                # Check if Symbol Exists
-                _symbol_exists  = self.check_if_symbol_exists()
-                if _symbol_exists[0] == 'NOK':
-                    self.response_tuple = ('NOK', _symbol_exists[1])
-                    return(self.response_tuple)               
-                
-                _avg_price_response = self.client[1].get_avg_price(symbol=self.symbol)
-            else:
-                _inputs = _symbol_input
-                
-                # Check if Symbol Exists
-                _symbol_exists = self.check_if_symbol_exists(_symbol_input)
-                if _symbol_exists[0] == 'NOK':
-                    self.response_tuple = ('NOK',  _symbol_exists[1])
-                    return(self.response_tuple)                
-                
-                _avg_price_response = self.client[1].get_avg_price(symbol=_symbol_input)
+            
+            # Check if Symbol Exists
+            _symbol_exists = self.check_if_symbol_exists(_symbol_check)
+            if _symbol_exists[0] == 'NOK':
+                self.response_tuple = ('NOK',  _symbol_exists[1])
+                return(self.response_tuple) 
+                            
+            # Get Avg Price                
+            _avg_price_response = self.client[1].get_avg_price(symbol=_symbol)
             
             if _avg_price_response is not None:
                 _price = Decimal(_avg_price_response.get('price'))
@@ -657,7 +662,6 @@ class BinanceAPIClass:
         # Prepare
         _inputs                         = f"{_what_fee}|{_type}|{_size}|{_price}|{_how2get_qta2buy}|{self.symbol_first}|{self.symbol_second}"
         _get_tot_symbol                 = f"tot_{self.symbol_second.lower()}" # build Wallet Dict Key
-        
         symbol_bal_second_free          = None       
         symbol_bal_second_tot_estimated = None              
         symbol_step_size                = None
