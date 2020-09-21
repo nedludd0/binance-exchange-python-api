@@ -11,7 +11,7 @@ def run(choose):
 
     # Prepare
     symbol_first       = 'BTC'
-    symbol_second      = 'USDT'
+    symbol_second      = 'BUSD'
     symbol             = f"{symbol_first}{symbol_second}"
     api_key            = config_api.API_KEY
     api_sec            = config_api.API_SECRET
@@ -25,7 +25,7 @@ def run(choose):
         
         if _binance_obj.client[0] == 'OK': 
                    
-            _out = _binance_obj.get_avg_price()
+            _out = _binance_obj.general_get_symbol_avg_price()
             
             if _out[0] == 'OK':
                 print(f"{chr(10)}------------")
@@ -53,7 +53,7 @@ def run(choose):
         
         if _binance_obj.client[0] == 'OK':
                     
-            _out = _binance_obj.get_rate_limits()
+            _out = _binance_obj.general_get_rate_limits()
     
             if _out[0] == 'OK':
                 print(f"{chr(10)}------------")
@@ -75,14 +75,16 @@ def run(choose):
 
     ## ACCOUNT ENDPOINTS ##
     
-    # MyBalance
-    elif choose == 3:
-             
+    # MyBalance Spot
+    elif choose == 31:
+            
+        _wallet = 'spot'
+        
         _binance_obj = BinanceAPIClass(api_key, api_sec)
         
         if _binance_obj.client[0] == 'OK':
 
-            _out = _binance_obj.get_my_balance_total()
+            _out = _binance_obj.account_get_balance_total(_wallet)
     
             if _out[0] == 'OK':
                 print(f"{chr(10)}------------")
@@ -95,8 +97,8 @@ def run(choose):
                         print(f"{_dict.get('asset')} locked: {_dict.get('locked')   :.8f}")
                         print("--------")
                 
-                print(f"Tot Estimated BTC:  {_out[1][0].get('totals').get('tot_btc')    :.8f}")
-                print(f"Tot Estimated USDT: {_out[1][0].get('totals').get('tot_usdt')   :.8f}")
+                print(f"Tot Estimated BTC: {_out[1][0].get('totals').get('tot_btc')    :.8f}")
+                print(f"Tot Estimated USD: {_out[1][0].get('totals').get('tot_usd')   :.8f}")
                 
             elif _out[0] == 'NOK':
                 print(f"{chr(10)}-----------")
@@ -108,13 +110,50 @@ def run(choose):
         else:
             
             print(f"-- ERROR --")
-            print(f"{_binance_obj.client[1]}")            
+            print(f"{_binance_obj.client[1]}")
+                        
+    # MyBalance Margin
+    elif choose == 32:
+
+        _wallet = 'margin'
+    
+        _binance_obj = BinanceAPIClass(api_key, api_sec)
         
+        if _binance_obj.client[0] == 'OK':
 
+            _out = _binance_obj.account_get_balance_total(_wallet)
+    
+            if _out[0] == 'OK':
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")          
+                for _dict in _out[1]:
+                    
+                    if _dict.get('asset') is not None:          
+                        print(f"{_dict.get('asset')} free:   {_dict.get('free')     :.8f}")
+                        print(f"{_dict.get('asset')} locked: {_dict.get('locked')   :.8f}")
+                        print("--------")
+                
+                print(f"Tot Estimated BTC: {_out[1][0].get('totals').get('tot_btc')    :.8f}")
+                print(f"Tot Estimated USD: {_out[1][0].get('totals').get('tot_usd')   :.8f}")
+                
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")
+            
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.client[1]}")
 
-    # MakeOrder
-    elif choose == 4:
-
+    # MakeOrder Spot
+    elif choose == 41:
+        
+        _wallet = 'spot'
+        
         _limit  = None
         _stop   = None
         _price  = None       
@@ -148,10 +187,72 @@ def run(choose):
 
         if _binance_obj.client[0] == 'OK':
                     
-            _out = _binance_obj.create_order_spot(_type_str, _side, _size, _limit, _stop, _price)
+            _out = _binance_obj.account_create_order(_wallet, _type_str, _side, _size, _limit, _stop, _price)
     
             if _out[0] == 'OK':
-                _formatted_output_temp = _binance_obj.format_create_order_spot_result( _result = _out[1][0], _type = _type_str)
+                _formatted_output_temp = _binance_obj.account_format_create_order_result( _result = _out[1][0], _type = _type_str)
+                _formatted_output      = _formatted_output_temp[1] 
+                #_formatted_output      = _out[1][0]
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")            
+                print(f"{_formatted_output}")          
+                print(f"{chr(10)}------------")
+                print(f"Qta Total: {_out[1][1]}")    
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")
+        
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.client[1]}") 
+
+    # MakeOrder Margin
+    elif choose == 42:
+        
+        _wallet = 'margin'
+        
+        _limit  = None
+        _stop   = None
+        _price  = None       
+        
+        # Inputs
+        print(f"{chr(10)}------------")        
+        print(f"-- INPUTs --")
+        print(f"------------")
+        print(f"Symbol: {symbol}")
+        _type = input("Choose TYPE (market 1, limit 2, stop_limit 3 or oco 4): ")
+        if int(_type) == 1:
+            _type_str = 'market'
+        elif int(_type) == 2:
+            _type_str   = 'limit'
+            _limit      = input("Choose LIMIT: ")
+        elif int(_type) == 3:
+            _type_str   = 'stop_limit'
+            _stop       = input("Choose STOP: ")             
+            _limit      = input("Choose LIMIT: ")                        
+        elif int(_type) == 4:
+            _type_str   = 'oco'
+            _stop       = input("Choose STOP  (sl) : ")            
+            _limit      = input("Choose LIMIT (sl) : ")                                                 
+            _price      = input("Choose PRICE (tp) : ")                                                       
+        _side = input("Choose SIDE (buy or sell): ")
+        _size = input("Choose SIZE %: ")        
+        print(f"{chr(10)}")
+
+        # Make Order
+        _binance_obj = BinanceAPIClass(api_key, api_sec, symbol_first, symbol_second)
+
+        if _binance_obj.client[0] == 'OK':
+                    
+            _out = _binance_obj.account_create_order(_wallet, _type_str, _side, _size, _limit, _stop, _price)
+    
+            if _out[0] == 'OK':
+                _formatted_output_temp = _binance_obj.account_format_create_order_result( _result = _out[1][0], _type = _type_str)
                 _formatted_output      = _formatted_output_temp[1] 
                 #_formatted_output      = _out[1][0]
                 print(f"{chr(10)}------------")
@@ -172,17 +273,48 @@ def run(choose):
             print(f"-- ERROR --")
             print(f"{_binance_obj.client[1]}") 
             
-    # GetOpenOrders
-    elif choose == 5:
+    # GetOpenOrders Spot
+    elif choose == 51:
+        
+        _wallet = 'spot'
         
         _binance_obj = BinanceAPIClass(api_key, api_sec)
         
         if _binance_obj.client[0] == 'OK':   
                  
-            _out = _binance_obj.get_my_openorders()
+            _out = _binance_obj.account_get_open_orders(_wallet)
     
             if _out[0] == 'OK':
-                _formatted_output_temp = _binance_obj.format_open_orders_result(_out[1])
+                _formatted_output_temp = _binance_obj.account_format_open_orders_result(_out[1])
+                _formatted_output      = _formatted_output_temp[1]
+                #_formatted_output      =_out[1]             
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------{chr(10)}")  
+                for _dict in _formatted_output:          
+                    print(f"{_dict}{chr(10)}")
+                #print(_formatted_output)
+                                  
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")
+
+    # GetOpenOrders Margin
+    elif choose == 52:
+
+        _wallet = 'margin'        
+
+        _binance_obj = BinanceAPIClass(api_key, api_sec)
+        
+        if _binance_obj.client[0] == 'OK':   
+                 
+            _out = _binance_obj.account_get_open_orders(_wallet)
+    
+            if _out[0] == 'OK':
+                _formatted_output_temp = _binance_obj.account_format_open_orders_result(_out[1])
                 _formatted_output      = _formatted_output_temp[1]
                 #_formatted_output      =_out[1]             
                 print(f"{chr(10)}------------")
@@ -204,8 +336,10 @@ def run(choose):
             print(f"-- ERROR --")
             print(f"{_binance_obj.client[1]}") 
 
-    # CancelOrder
-    elif choose == 6:
+    # CancelOrder Spot
+    elif choose == 61:
+        
+        _wallet = 'spot'
         
         # Inputs
         print(f"{chr(10)}------------")        
@@ -220,10 +354,46 @@ def run(choose):
         
         if _binance_obj.client[0] == 'OK':        
         
-            _out = _binance_obj.cancel_order_spot(_symbol, _orderid)
+            _out = _binance_obj.account_cancel_order(_wallet, _symbol, _orderid)
     
             if _out[0] == 'OK':
-                _formatted_output_temp = _binance_obj.format_create_order_spot_result( _result = _out[1], _cancel = True)
+                _formatted_output_temp = _binance_obj.account_format_create_order_result( _result = _out[1], _cancel = True)
+                _formatted_output      = _formatted_output_temp[1] 
+                #_formatted_output      = _out[1]            
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")             
+                print(f"{_formatted_output}")
+                #print(_formatted_output)            
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")
+
+    # CancelOrder Spot
+    elif choose == 62:
+        
+        _wallet = 'margin'
+        
+        # Inputs
+        print(f"{chr(10)}------------")        
+        print(f"-- INPUTs --")
+        print(f"------------")        
+        _symbol     = input("Choose Symbol: ")
+        _orderid    = input("Choose OrderID: ")  
+        print(f"{chr(10)}")
+        
+        # Cancel Order
+        _binance_obj = BinanceAPIClass(api_key, api_sec)
+        
+        if _binance_obj.client[0] == 'OK':        
+        
+            _out = _binance_obj.account_cancel_order(_wallet, _symbol, _orderid)
+    
+            if _out[0] == 'OK':
+                _formatted_output_temp = _binance_obj.account_format_create_order_result( _result = _out[1], _cancel = True)
                 _formatted_output      = _formatted_output_temp[1] 
                 #_formatted_output      = _out[1]            
                 print(f"{chr(10)}------------")
@@ -258,7 +428,7 @@ def run(choose):
 
         if _binance_obj.client[0] == 'OK':
                     
-            _out = _binance_obj.convert_my_dust_to_bnb(_symbol)
+            _out = _binance_obj.spot_convert_dust2bnb(_symbol)
     
             if _out[0] == 'OK':
                 print(f"{chr(10)}------------")
@@ -285,7 +455,7 @@ def run(choose):
 
         if _binance_obj.client[0] == 'OK':
                     
-            _out = _binance_obj.test_connectivity()
+            _out = _binance_obj.general_test_connectivity()
     
             if _out[0] == 'OK':
                 print(f"{chr(10)}------------")
@@ -306,12 +476,17 @@ def run(choose):
 
     else:
         
-
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
         
 
 if __name__ == "__main__":
     
-    choose = input(f"{chr(10)}CHOOSE WHAT TO DO (AvgPriceSymbol 1, RateLimits 2 , MyBalance 3 , MakeOrder 4, GetOpenOrders 5, CancelOrder 6, ConvertMyDust 7, TestConnectivity 8): ") 
-    
+    choose = input( f"{chr(10)}CHOOSE WHAT TO DO:  {chr(10)}"\
+                    f"AvgPriceSymbol 1      , RateLimits 2{chr(10)}"\
+                    f"MyBalance Spot 31     , MyBalance Margin 32{chr(10)}"\
+                    f"MakeOrder Spot 41     , MakeOrder Margin 42{chr(10)}"\
+                    f"GetOpenOrders Spot 51 , GetOpenOrders Margin 52{chr(10)}"\
+                    f"CancelOrder Spot 61   , CancelOrder Margin 62{chr(10)}"\
+                    f"ConvertMyDust 7       , TestConnectivity 8{chr(10)}{chr(10)}"\
+                    f"CHOOSE Number: ")
     run(int(choose))

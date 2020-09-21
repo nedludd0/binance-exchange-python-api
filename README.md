@@ -1,5 +1,7 @@
 *A class to use https://github.com/sammchardy/python-binance*
 
+Both Spot and Margin Normal supported
+
 # General
 - see balance (free and locked)
 - calculate estimated balance in BTC and in USDT 
