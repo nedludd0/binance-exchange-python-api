@@ -4,6 +4,7 @@ import math
 
 # Logs
 import traceback
+from pprint import pprint
 
 # Python Binance Lib
 from binance.client import Client, BinanceAPIException
@@ -11,381 +12,386 @@ from binance.client import Client, BinanceAPIException
 # My
 import utility
 
-class BinanceAPIClass:
-    
-    def __init__(self, _api_pub_key = None, _api_secret_key = None, _symbol_first = None, _symbol_second = None):
+class BinanceAPI:
+
+    def __init__(self, p_api_pub_key = None, p_api_secret_key = None, p_symbol_first = None, p_symbol_second = None, p_wallet = None):
 
         # Symbol
-        if _symbol_first is not None:
-            self.symbol_first = _symbol_first.upper()
-        if _symbol_second is not None:
-            self.symbol_second = _symbol_second.upper()
-        if _symbol_first is not None and _symbol_second is not None:
-            self.symbol = f"{_symbol_first}{_symbol_second}".upper()
-            
+        if p_wallet:
+            self.wallet = p_wallet.lower()
+        else:
+            self.wallet = 'spot'
+        if p_symbol_first:
+            self.symbol_first = p_symbol_first.upper()
+        if p_symbol_second:
+            self.symbol_second = p_symbol_second.upper()
+        if p_symbol_first and p_symbol_second:
+            self.symbol = f"{p_symbol_first}{p_symbol_second}".upper()
+
         # Working
         self.response_tuple = None
+        self.client_builded = None
         self.client         = None
-        
+
         # Build Client
         self.request_timeout    = 20
-        self.client             = self.my_build_client(_api_pub_key, _api_secret_key)
-        
-    """""""""""""""""""""
-    MY UTILITY
-    """""""""""""""""""""
-    def my_build_client(self, _api_pub_key = None, _api_secret_key = None):
+        self.client_builded     = self.build_client(p_api_pub_key, p_api_secret_key)
+        if self.check_client_build_ok():
+            self.client = self.client_builded[1]
 
+    """""""""""""""""""""
+    UTILITY
+    """""""""""""""""""""
+    # Build Client
+    def build_client(self, p_api_pub_key = None, p_api_secret_key = None):
+        
         # Prepare
-        _inputs = f"{self.request_timeout}"
-        _temp   = None
+        _inputs = f"{self.request_timeout}|{'API_PUB_KEY_SETTED' if p_api_pub_key else None}|{'API_SECRET_KEY_SETTED' if p_api_secret_key else None} "
+        _temp = None
 
         # Instance Binance Client
-        if _api_pub_key is not None and _api_secret_key is not None:
-            try:
-                _temp               = Client( api_key = _api_pub_key, api_secret = _api_secret_key, requests_params = { "timeout" : self.request_timeout } )
-                self.response_tuple = ('OK', _temp)
-            except BinanceAPIException as e:
-                _error = str(e).split(":")[1]
-                self.response_tuple = ('NOK',  _error)
-            except Exception as e:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','my_build_client',_inputs,traceback.format_exc(2))}")      
-        else:
-            try:            
-                _temp               = Client( requests_params = { "timeout" : self.request_timeout } )
-                self.response_tuple = ('OK', _temp)
-            except BinanceAPIException as e:
-                _error = str(e).split(":")[1]
-                self.response_tuple = ('NOK',  _error)
-            except Exception as e:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','my_build_client',_inputs,traceback.format_exc(2))}") 
-                      
+        try:
+            if p_api_pub_key and p_api_secret_key:
+                _temp = Client( api_key = p_api_pub_key, api_secret = p_api_secret_key, requests_params = { "timeout" : self.request_timeout } )
+            else:
+                _temp = Client( requests_params = { "timeout" : self.request_timeout } )
+            self.response_tuple = ('OK', _temp)
+        except BinanceAPIException as e:
+            _error = str(e).split(":")[1]
+            self.response_tuple = ('NOK',  _error)
+        except:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','build_client',_inputs,traceback.format_exc(2))}")
+
         return(self.response_tuple)
     
-    # Truncate _qta_start to the largest multiple of _step_size for LOT_SIZE
-    def my_truncate_by_step_size(self, _qta_start, _step_size):
-        
+    # Check if the client build was successful
+    def check_client_build_ok(self):
+        if self.client_builded[0] == 'OK':
+            return True
+        else:
+            return False
+    # Return error when the client build went wrong 
+    def get_client_msg_nok(self):
+        return self.client_builded[1]
+
+    # Truncate Asset Qta (p_qta_start) to the largest multiple of p_step_size for LOT_SIZE
+    def truncate_by_step_size(self, p_qta_start, p_step_size):
+
         # Prepare
+        _inputs             = f"{p_qta_start}|{p_step_size}"
         _digits_decimal     = None
-        _qta_start_decimal  = Decimal(_qta_start)
+        _qta_start_decimal  = None
         _qta_end            = None
-        _inputs             = f"{_qta_start}|{_step_size}"
-        
-        # Calculate Digits
-        try:
-            _digits_decimal = int( round( -math.log(_step_size, 10) , 0 ) )
-        except Exception as e:
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','my_truncate_by_step_size',_inputs,traceback.format_exc(2))}")
-            return(self.response_tuple)
-            
+
         # By default rounding setting in python is ROUND_HALF_EVEN
         getcontext().rounding = ROUND_DOWN
-        
+
+        # Convert p_qta_start into Decimal
+        try:
+            _qta_start_decimal = Decimal(p_qta_start)
+        except Exception:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','truncate_by_step_size',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Calculate Digits 4 Round
+        try:
+            _digits_decimal = int( round( -math.log(p_step_size, 10) , 0 ) )
+        except Exception:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','truncate_by_step_size',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
         # Calculate Tot End
         try:
             _qta_end = round( _qta_start_decimal , _digits_decimal )
             self.response_tuple = ('OK',_qta_end)
-        except Exception as e:
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','my_truncate_by_step_size',_inputs,traceback.format_exc(2))}")
-        
+        except Exception:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','truncate_by_step_size',_inputs,traceback.format_exc(2))}")
+
         return(self.response_tuple)
-    
+
     """""""""""""""""""""
     GENERAL ENDPOINTS
     """""""""""""""""""""
     # Check if Symbol Exists
-    def general_check_if_symbol_exists(self, _symbol_input = None):
-        
+    def general_check_if_symbol_exists(self, p_symbol_input = None):
+
         # Prepare
-        _symbol_info    = None    
-        _inputs         = None 
-        
-        # Prepare Inputs
-        if _symbol_input is None:
-            _inputs = f"{self.symbol}"
-            _symbol = self.symbol
+        _inputs         = None        
+        _symbol_info    = None
+        _symbol_work    = None
+
+        # Choose Symbol
+        if not p_symbol_input:
+            _symbol_work = self.symbol
         else:
-            _inputs = f"{_symbol_input}"
-            _symbol = _symbol_input                
+            _symbol_work = p_symbol_input
+
+        # Set Inputs
+        _inputs = f"{_symbol_work}"
 
         # Work
         try:
-            
             # Check
-            _symbol_info = self.client[1].get_symbol_info(symbol=_symbol)
-            
-            if _symbol_info is not None:
-                self.response_tuple = ('OK', f"Symbol {_inputs} exist")
+            _symbol_info = self.client.get_symbol_info(symbol=_symbol_work)
+            if _symbol_info:
+                self.response_tuple = ('OK', f"Symbol {_symbol_work} exist")
             else:
-                self.response_tuple = ('NOK', f"Symbol {_inputs} does not exist")
-
+                self.response_tuple = ('NOK', f"Symbol {_symbol_work} does not exist")
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-
-        except Exception as e:
-            
+        except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_check_if_symbol_exists',_inputs,traceback.format_exc(2))}")
-        
+
         return(self.response_tuple)
-    
+
     # Get Binance Rate Limits
     def general_get_rate_limits(self):
-        
+
         # Prepare
+        _inputs         = None        
         _rate_limits    = None
         _exchange_info  = None
         _output_verbose = {}
-        _inputs         = None
-        
+
         try:
-    
-            _exchange_info  = self.client[1].get_exchange_info()
-            
-            if _exchange_info is not None:
-            
-                _rate_limits    = _exchange_info.get('rateLimits')
-                
+
+            # Get Exchange Info
+            _exchange_info = self.client.get_exchange_info()
+            if _exchange_info:
+                _rate_limits = _exchange_info.get('rateLimits')
                 if len(_rate_limits) > 0:
-                    
+
                     for _rate_limit in _rate_limits:
-                        
+
                         if _rate_limit.get('rateLimitType') == 'REQUEST_WEIGHT':
-                            
+
                             _key                    = f"Max Requests for {_rate_limit.get('intervalNum')} {_rate_limit.get('interval').lower().capitalize()}"
                             _output_verbose[_key]   = _rate_limit.get('limit')
-                            
+
                         elif _rate_limit.get('rateLimitType') == 'ORDERS' and _rate_limit.get('interval') == 'SECOND':
-                            
+
                             _key                    = f"Max Orders for {_rate_limit.get('intervalNum')} {_rate_limit.get('interval').lower().capitalize()}"
                             _output_verbose[_key]   = _rate_limit.get('limit')
-                        
+
                         elif _rate_limit.get('rateLimitType') == 'ORDERS' and _rate_limit.get('interval')== 'DAY':
-                            
+
                             _key                    = f"Max Orders for {_rate_limit.get('intervalNum')} {_rate_limit.get('interval').lower().capitalize()}"
                             _output_verbose[_key]   = _rate_limit.get('limit')
-                        
+
                         self.response_tuple = ('OK', _output_verbose)
-                        
+
                 else:
                     self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_rate_limits',_inputs,'_rate_limits is None')}")
-                    
+
             else:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_rate_limits',_inputs,'_exchange_info is None')}")
 
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-
-        except Exception as e:
+        except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_rate_limits',_inputs,traceback.format_exc(2))}")
-        
+
         return(self.response_tuple)
 
     # Test connectivity to the Rest API getting the current server time.
     def general_test_connectivity(self):
-        
+
         # Prepare
+        _inputs         = None        
         _output         = {}
         _server_time    = None
-        _inputs         = None
 
         try:
-            _output  = self.client[1].get_server_time()
+            _output = self.client.get_server_time()
             if len(_output) != 0:
                 _server_time = utility.timestamp_formatter(_output.get('serverTime'))
             self.response_tuple = ('OK', _server_time)
         except BinanceAPIException as e:
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-        except Exception as e:
+        except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_test_connectivity',_inputs,traceback.format_exc(2))}")
 
         return(self.response_tuple)
 
     # Get Symbol Info 
     # LOT_SIZE      --> It is used for both buy and sell
-    # MIN_NOTIONAL  --> It is used for both buy and sell and it is applied on the symbol_second in the following way: 
-    #                   quantity symbol_first * avg price symbol > minNotional of symbol
-    def general_get_symbol_info_filter(self, _what_filter, _symbol_input = None):
-        
+    # MIN_NOTIONAL  --> It is used for both buy and sell and it is applied on the symbol_second in the following way: quantity symbol_first * avg price symbol > minNotional of symbol
+    def general_get_symbol_info_filter(self, p_what_filter, p_symbol_input = None):
+
         # Prepare
-        _symbol_info            = None    
+        _inputs                 = None        
+        _symbol_info            = None
+        _symbol_work            = None        
         _output_lot_size        = {}
         _output_min_notional    = {}
-        _inputs                 = None      
-        
+
+        # Choose Symbol
+        if not p_symbol_input:
+            _symbol_work = self.symbol
+        else:
+            _symbol_work = p_symbol_input
+
+        # Set Inputs
+        _inputs = f"{p_what_filter}|{_symbol_work}"
+
         try:
 
-            if _symbol_input is None:
-                _inputs         = f"{_what_filter}|{self.symbol}"
-                _symbol_info    = self.client[1].get_symbol_info(symbol=self.symbol)
-            else:
-                _inputs         = f"{_what_filter}|{_symbol_input}"
-                _symbol_info    = self.client[1].get_symbol_info(symbol=_symbol_input)
-            
-            if _symbol_info is not None:
-                
+            _symbol_info = self.client.get_symbol_info(symbol=_symbol_work)
+
+            if _symbol_info:
                 filters = _symbol_info.get('filters')
-            
                 if len(filters) > 0:
-                    
+
                     for f in filters:
-                        
-                        if _what_filter == 'LOT_SIZE':
-                            
-                            if f.get('filterType') == _what_filter:
-                                _output_lot_size["LOT_SIZE_symbol"]     = self.symbol
-                                _output_lot_size["LOT_SIZE_maxQty"]     = Decimal(f.get('maxQty'))
-                                _output_lot_size["LOT_SIZE_minQty"]     = Decimal(f.get('minQty'))   # quantity to buy or sell > symbol minQty
-                                _output_lot_size["LOT_SIZE_step_size"]  = Decimal(f.get('stepSize')) # the quantity to buy or sell must be an exact multiple of symbol stepSize
-                                self.response_tuple                     = ('OK', _output_lot_size)
+
+                        if p_what_filter == 'LOT_SIZE':
+
+                            if f.get('filterType') == p_what_filter:
+                                _output_lot_size["LOT_SIZE_symbol"] = _symbol_work
+                                try:
+                                    _output_lot_size["LOT_SIZE_maxQty"]     = Decimal(f.get('maxQty'))
+                                    _output_lot_size["LOT_SIZE_minQty"]     = Decimal(f.get('minQty'))   # quantity to buy or sell > symbol minQty
+                                    _output_lot_size["LOT_SIZE_step_size"]  = Decimal(f.get('stepSize')) # the quantity to buy or sell must be an exact multiple of symbol stepSize
+                                    self.response_tuple = ('OK', _output_lot_size)
+                                except Exception:
+                                    self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter',_inputs,traceback.format_exc(2))}")
                                 break
-                                
-                        elif _what_filter == 'MIN_NOTIONAL':
-                        
-                            if f.get('filterType') == 'MIN_NOTIONAL':
-                                _output_min_notional["LOT_SIZE_symbol"]         = self.symbol
-                                _output_min_notional["LOT_SIZE_minNotional"]    = Decimal(f.get('minNotional'))
-                                _output_min_notional["LOT_SIZE_applyToMarket"]  = f.get('applyToMarket')
-                                _output_min_notional["LOT_SIZE_avgPriceMins"]   = f.get('avgPriceMins')
-                                self.response_tuple                             = ('OK', _output_min_notional)
+
+                        elif p_what_filter == 'MIN_NOTIONAL':
+
+                            if f.get('filterType') == p_what_filter:
+                                _output_min_notional["LOT_SIZE_symbol"] = _symbol_work
+                                try:
+                                    _output_min_notional["LOT_SIZE_minNotional"]    = Decimal(f.get('minNotional'))
+                                    _output_min_notional["LOT_SIZE_applyToMarket"]  = f.get('applyToMarket')
+                                    _output_min_notional["LOT_SIZE_avgPriceMins"]   = f.get('avgPriceMins')
+                                    self.response_tuple = ('OK', _output_min_notional)
+                                except Exception:
+                                    self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter',_inputs,traceback.format_exc(2))}")
                                 break
+
                         else:
                             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,'what_filter is unknown')}")
-                
+
                 else:
                     self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,'filters is None')}")
-                
+
             else:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,'_symbol_info is None')}")
 
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-            
-        except Exception as e:
-            
+        except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter',_inputs,traceback.format_exc(2))}")
-                
+
         return(self.response_tuple)
-    
+
     # Get Symbol Fee Cost
     # https://binance.zendesk.com/hc/en-us/articles/360007720071-Maker-vs-Taker
-    def general_get_symbol_fee_cost(self, _what_fee='taker', _symbol_input = None):
-        
+    def general_get_symbol_fee_cost(self, p_what_fee='taker', p_symbol_input = None):
+
         # Prepare
+        _inputs             = None        
         _fee                = None
         _trade_fee_response = None
         _symbol_exists      = None
         _trade_fee          = {}
-        
+        _symbol_work        = None
+
+        # Choose Symbol
+        if not p_symbol_input:
+            _symbol_work = self.symbol
+        else:
+            _symbol_work = p_symbol_input
+
+        # Set Inputs
+        _inputs = f"{_symbol_work}|{p_what_fee}"
+
+        # Check if Symbol Exists
+        _symbol_exists  = self.general_check_if_symbol_exists(_symbol_work)
+        if _symbol_exists[0] == 'NOK':
+            self.response_tuple = (_symbol_exists[0], _symbol_exists[1])
+            return(self.response_tuple)
+
         try:
+            # Get Trade Fee Response
+            _trade_fee_response = self.client.get_trade_fee(symbol=_symbol_work)
 
-            if _symbol_input is None:
-                _inputs = f"{self.symbol}|{_what_fee}"
-                
-                # Check if Symbol Exists
-                _symbol_exists  = self.general_check_if_symbol_exists()
-                if _symbol_exists[0] == 'NOK':
-                    self.response_tuple = ('NOK', _symbol_exists[1])
-                    return(self.response_tuple)             
-                
-                _trade_fee_response = self.client[1].get_trade_fee(symbol=self.symbol)
-            else:
-                _inputs = f"{_symbol_input}|{_what_fee}"
-                
-                # Check if Symbol Exists
-                _symbol_exists = self.general_check_if_symbol_exists(_symbol_input)
-                if _symbol_exists[0] == 'NOK':
-                    self.response_tuple = ('NOK',  _symbol_exists[1])
-                    return(self.response_tuple)
-
-                _trade_fee_response = self.client[1].get_trade_fee(symbol=_symbol_input)
-
-            if _trade_fee_response is not None:
+            # Work on Trade Fee Response
+            if _trade_fee_response:
                 if (_trade_fee_response.get('success')):
-                    _trade_fee = self.client[1].get_trade_fee(symbol=self.symbol).get('tradeFee')
+                    _trade_fee = _trade_fee_response.get('tradeFee')
                     if len(_trade_fee) > 0: # Checking if dictionary _trade_fee is empty
                         for t in _trade_fee:
-                            if t.get('symbol') == self.symbol:
-                                if _what_fee == 'taker':
-                                    _fee = Decimal(t.get('taker'))
-                                elif _what_fee == 'maker':
-                                    _fee = Decimal(t.get('maker'))
-                                else:
-                                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_fee_cost',_inputs,'_what_fee unknown')}")
+                            if t.get('symbol') == _symbol_work:
+                                try:
+                                    _fee = Decimal(t.get(p_what_fee))
+                                    self.response_tuple = ('OK', _fee)
+                                except Exception:
+                                    self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_fee_cost',_inputs,traceback.format_exc(2))}")
                                     return(self.response_tuple)
-                                    
-                                self.response_tuple = ('OK', _fee)
                     else:
                         self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_fee_cost',_inputs,'_trade_fee is Empty')}")
                 else:
-                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_fee_cost',_inputs,'_trade_fee insuccess')}")
+                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_fee_cost',_inputs,'get_trade_fee() insuccess')}")
             else:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_fee_cost',_inputs,'_trade_fee_response is None')}")
 
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-            
-        except Exception as e:
-            
+        except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_fee_cost',_inputs,traceback.format_exc(2))}")
-    
+
         return(self.response_tuple)
 
     # Get Average price in the last 5 minutes
-    def general_get_symbol_avg_price(self, _symbol_input = None):
-    
+    def general_get_symbol_avg_price(self, p_symbol_input = None):
+
         # Prepare
+        _inputs             = None           
         _price              = None
         _avg_price_response = None
         _symbol_exists      = None
-        _symbol_check       = None        
-        
-        # Prepare Inputs
-        if _symbol_input is None:
-            _inputs         = f"{self.symbol}"
-            _symbol         = self.symbol            
-        else:
-            _inputs         = f"{_symbol_input}"
-            _symbol         = _symbol_input
-            _symbol_check   = _symbol_input
+        _symbol_work        = None
 
-        # Work
+        # Choose Symbol
+        if not p_symbol_input:
+            _symbol_work = self.symbol
+        else:
+            _symbol_work = p_symbol_input
+
+        # Set Inputs
+        _inputs = f"{_symbol_work}"
+
+        # Check if Symbol Exists
+        _symbol_exists = self.general_check_if_symbol_exists(_symbol_work)
+        if _symbol_exists[0] == 'NOK':
+            self.response_tuple = (_symbol_exists[0],  _symbol_exists[1])
+            return(self.response_tuple)
+
+        # Get Avg Price
         try:
-            
-            # Check if Symbol Exists
-            _symbol_exists = self.general_check_if_symbol_exists(_symbol_check)
-            if _symbol_exists[0] == 'NOK':
-                self.response_tuple = ('NOK',  _symbol_exists[1])
-                return(self.response_tuple) 
-                            
-            # Get Avg Price                
-            _avg_price_response = self.client[1].get_avg_price(symbol=_symbol)
-            
-            if _avg_price_response is not None:
+
+            _avg_price_response = self.client.get_avg_price(symbol=_symbol_work)
+            if _avg_price_response:
                 _price = Decimal(_avg_price_response.get('price'))
                 self.response_tuple = ('OK', _price)
             else:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_avg_price',_inputs,'_avg_price_response is None')}")            
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_avg_price',_inputs,'_avg_price_response is None')}")
 
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-                
-        except Exception as e:
-            
+        except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_avg_price',_inputs,traceback.format_exc(2))}")
-    
+
         return(self.response_tuple)
-    
+
 
     """""""""""""""""""""""""""""""""
     ACCOUNT ENDPOINTS (SPOT + MARGIN)
@@ -394,210 +400,169 @@ class BinanceAPIClass:
     """ GENERIC """
 
     # Get Account Balance Total (free & locked) --> spot + margin
-    def account_get_balance_total(self, _wallet, _what_based = 'ALL'):
-        
+    def account_get_balance_total(self):
+
         # Prepare
-        _my_balance     = []
-        _my_asset       = {}
-        _account_info   = None
-        _inputs         = f"{_wallet}|{_what_based}"
-        _what_find      = None        
-        
+        _inputs             = f"{self.wallet}"        
+        _my_balance         = []
+        _my_asset           = {}
+        _account_info       = None
+        _what_find          = None
+        _what_finds         = None   
+
         _symbol_temp_btc        = None
         _symbol_temp_usdt       = None
-        _symbol_temp_bsd        = None        
         _avg_price_temp_btc     = 0
         _avg_price_temp_usdt    = 0
-        _avg_price_temp_bsd     = 0        
-        
+
         _tot_btc_free       = 0
         _tot_btc_locked     = 0
-        _tot_usdt_free      = 0
-        _tot_usdt_locked    = 0
-        _tot_busd_free      = 0
-        _tot_busd_locked    = 0
-                
+        _tot_usd_free       = 0
+        _tot_usd_locked     = 0
         _tot_btc            = 0
-        _tot_usdt           = 0                       
+        _tot_usd            = 0
 
         try:
-
-            if _wallet == 'spot':
-                _account_info   = self.client[1].get_account()                
+                                    
+            # Get Account Info
+            if self.wallet == 'spot':
+                _account_info   = self.client.get_account()
                 _what_finds     = "balances"
-            elif _wallet == 'margin':
-                _account_info   = self.client[1].get_margin_account()                
+            elif self.wallet == 'margin':
+                _account_info   = self.client.get_margin_account()
                 _what_finds     = "userAssets"
-            
+                
+            # Get Values from Account Info
             if _what_finds in _account_info:
                 
-                for _what_find in _account_info[_what_finds]: # For every Balances
-                    
-                    if ( float(_what_find.get('free')) + float(_what_find.get('locked')) ) > 0: # Only Asset with something
-                        
+                # For every Balances
+                for _what_find in _account_info[_what_finds]:
+
+                    if ( Decimal(_what_find.get('free')) + Decimal(_what_find.get('locked')) ) > 0: # Only Asset with something
+
                         """""""""""""""""""""""""""""""""
                          Build Wallet with List Assets Dict
                         """""""""""""""""""""""""""""""""
                         # Build Asset Dict
-                        _my_asset = {   'asset'     : _what_find.get('asset'), 
-                                        'free'      : Decimal(_what_find.get('free')), 
+                        _my_asset = {   'asset'     : _what_find.get('asset'),
+                                        'free'      : Decimal(_what_find.get('free')),
                                         'locked'    : Decimal(_what_find.get('locked'))    }
-                                        
+
                         # Build List Assets Dict
                         _my_balance.append(_my_asset)
-                        
+
                         """""""""""""""""""""""""""""""""
-                         Build Estimated Value BTC & USDT
+                        Build Estimated TOT Value BTC & USD
                         """""""""""""""""""""""""""""""""
-                        # First Asset BTC
+                        # Asset BTC
                         if _my_asset.get('asset') == 'BTC':
-                            
+
                             # Tot Btc
-                            if _what_based.upper() == 'BTC' or _what_based.upper() == 'ALL':
-                                _tot_btc_free   = _tot_btc_free + _my_asset.get('free')
-                                _tot_btc_locked = _tot_btc_locked + _my_asset.get('locked')
-
-                            # Tot Usdt                            
-                            if _what_based.upper() == 'USDT' or _what_based.upper() == 'ALL':                            
-                                _avg_price_temp = self.general_get_symbol_avg_price('BTCUSDT')
-                                if _avg_price_temp[0] == 'OK':
-                                    _tot_usdt_free      = _tot_usdt_free + (_avg_price_temp[1] * _my_asset.get('free'))
-                                    _tot_usdt_locked    = _tot_usdt_locked + (_avg_price_temp[1] * _my_asset.get('locked'))                                
-                                else:
-                                    self.response_tuple = ('NOK',  _avg_price_temp[1])
-
-                            # Tot Busd                            
-                            if _what_based.upper() == 'BUSD' or _what_based.upper() == 'ALL':                            
-                                _avg_price_temp = self.general_get_symbol_avg_price('BTCBUSD')
-                                if _avg_price_temp[0] == 'OK':
-                                    _tot_busd_free      = _tot_busd_free + (_avg_price_temp[1] * _my_asset.get('free'))
-                                    _tot_busd_locked    = _tot_busd_locked + (_avg_price_temp[1] * _my_asset.get('locked'))                                
-                                else:
-                                    self.response_tuple = ('NOK',  _avg_price_temp[1])
-
-                        # First Asset USDT
+                            _tot_btc_free   = _tot_btc_free + _my_asset.get('free')
+                            _tot_btc_locked = _tot_btc_locked + _my_asset.get('locked')
+                            
+                            # Tot Usd
+                            _avg_price_temp = self.general_get_symbol_avg_price('BTCUSDT')
+                            if _avg_price_temp[0] == 'OK':
+                                _tot_usd_free      = _tot_usd_free + (_avg_price_temp[1] * _my_asset.get('free'))
+                                _tot_usd_locked    = _tot_usd_locked + (_avg_price_temp[1] * _my_asset.get('locked'))
+                            else:
+                                self.response_tuple = ('NOK',  _avg_price_temp[1])
+                        
+                        # Asset USDT
                         elif _my_asset.get('asset') == 'USDT':
                             
                             # Tot Btc
-                            if _what_based.upper() == 'BTC' or _what_based.upper() == 'ALL':
-                                _avg_price_temp = self.general_get_symbol_avg_price('BTCUSDT')                                
-                                if _avg_price_temp[0] == 'OK':
-                                    _tot_btc_free   = _tot_btc_free + _my_asset.get('free') / _avg_price_temp[1]
-                                    _tot_btc_locked = _tot_btc_locked + _my_asset.get('locked') / _avg_price_temp[1]                                
-                                else:
-                                    self.response_tuple = ('NOK', _avg_price_temp[1])
+                            _avg_price_temp = self.general_get_symbol_avg_price('BTCUSDT')
+                            if _avg_price_temp[0] == 'OK':
+                                _tot_btc_free   = _tot_btc_free + _my_asset.get('free') / _avg_price_temp[1]
+                                _tot_btc_locked = _tot_btc_locked + _my_asset.get('locked') / _avg_price_temp[1]
+                            else:
+                                self.response_tuple = ('NOK', _avg_price_temp[1])
                             
-                            # Tot Usdt
-                            if _what_based.upper() == 'USDT' or _what_based.upper() == 'ALL':                            
-                                _tot_usdt_free      = _tot_usdt_free + _my_asset.get('free')
-                                _tot_usdt_locked    = _tot_usdt_locked + _my_asset.get('locked')
-                                                            
-                        # First Asset BUSD
+                            # Tot Usd
+                            _tot_usd_free      = _tot_usd_free + _my_asset.get('free')
+                            _tot_usd_locked    = _tot_usd_locked + _my_asset.get('locked')                                
+
+                        # Asset BUSD
                         elif _my_asset.get('asset') == 'BUSD':
-                            
+
                             # Tot Btc
-                            if _what_based.upper() == 'BTC' or _what_based.upper() == 'ALL':
-                                _avg_price_temp = self.general_get_symbol_avg_price('BTCBUSD')
-
-                                if _avg_price_temp[0] == 'OK':
-                                    _tot_btc_free   = _tot_btc_free + _my_asset.get('free') / _avg_price_temp[1]
-                                    _tot_btc_locked = _tot_btc_locked + _my_asset.get('locked') / _avg_price_temp[1]                                
-                                else:
-                                    self.response_tuple = ('NOK', _avg_price_temp[1])
+                            _avg_price_temp = self.general_get_symbol_avg_price('BTCBUSD')
+                            if _avg_price_temp[0] == 'OK':
+                                _tot_btc_free   = _tot_btc_free + _my_asset.get('free') / _avg_price_temp[1]
+                                _tot_btc_locked = _tot_btc_locked + _my_asset.get('locked') / _avg_price_temp[1]
+                            else:
+                                self.response_tuple = ('NOK', _avg_price_temp[1])
                             
-                            # Tot Busd
-                            if _what_based.upper() == 'BUSD' or _what_based.upper() == 'ALL':                            
-                                _tot_busd_free      = _tot_busd_free + _my_asset.get('free')
-                                _tot_busd_locked    = _tot_busd_locked + _my_asset.get('locked')
-                                
-                        # Others First Asset
+                            # Tot Usd
+                            _tot_usd_free      = _tot_usd_free + _my_asset.get('free')
+                            _tot_usd_locked    = _tot_usd_locked + _my_asset.get('locked')
+
+                        # Asset ALTCOIN
                         else:
-                            
-                            # Tot Btc & Tot Usdt
-                            _symbol_temp_btc        = f"{_my_asset.get('asset')}BTC"
-                            _symbol_temp_usdt       = f"{_my_asset.get('asset')}USDT"
-                            _symbol_temp_busd       = f"{_my_asset.get('asset')}BUSD"                            
-                            
-                            if _what_based.upper() == 'BTC' or _what_based.upper() == 'ALL':
-                                
-                                _avg_price_temp_btc     = self.general_get_symbol_avg_price(_symbol_temp_btc)
-                                if _avg_price_temp_btc[0] == 'OK':
-                                    _tot_btc_free   = _tot_btc_free + (_avg_price_temp_btc[1] * _my_asset.get('free'))
-                                    _tot_btc_locked = _tot_btc_locked + (_avg_price_temp_btc[1] * _my_asset.get('locked'))
-                                else:
-                                    self.response_tuple = ('NOK', _avg_price_temp_btc[1])                            
-                            
-                            
-                            if _what_based.upper() == 'USDT' or _what_based.upper() == 'ALL': 
-                                
-                                _avg_price_temp_usdt    = self.general_get_symbol_avg_price(_symbol_temp_usdt)
 
-                                if _avg_price_temp_usdt[0] == 'OK':
-                                    _tot_usdt_free      = _tot_usdt_free + _avg_price_temp_usdt[1] * _my_asset.get('free')
-                                    _tot_usdt_locked    = _tot_usdt_locked + _avg_price_temp_usdt[1] * _my_asset.get('locked')                                
-                                else:
-                                    self.response_tuple = ('NOK',  _avg_price_temp_usdt[1])
+                            # Prepare 4 Tot Btc & Tot Usd
+                            _symbol_temp_btc    = f"{_my_asset.get('asset')}BTC"
+                            _symbol_temp_usdt   = f"{_my_asset.get('asset')}USDT"
 
-                            if _what_based.upper() == 'BUSD' or _what_based.upper() == 'ALL': 
-                                
-                                _avg_price_temp_busd    = self.general_get_symbol_avg_price(_symbol_temp_busd)
+                            # Tot Btc
+                            _avg_price_temp_btc = self.general_get_symbol_avg_price(_symbol_temp_btc)
+                            if _avg_price_temp_btc[0] == 'OK':
+                                _tot_btc_free   = _tot_btc_free + (_avg_price_temp_btc[1] * _my_asset.get('free'))
+                                _tot_btc_locked = _tot_btc_locked + (_avg_price_temp_btc[1] * _my_asset.get('locked'))
+                            else:
+                                self.response_tuple = ('NOK', _avg_price_temp_btc[1])
 
-                                if _avg_price_temp_busd[0] == 'OK':
-                                    _tot_busd_free      = _tot_busd_free + _avg_price_temp_usdt[1] * _my_asset.get('free')
-                                    _tot_busd_locked    = _tot_busd_locked + _avg_price_temp_usdt[1] * _my_asset.get('locked')                                
-                                else:
-                                    self.response_tuple = ('NOK',  _avg_price_temp_busd[1])
-
+                            # Tot Usd    
+                            _avg_price_temp_usdt = self.general_get_symbol_avg_price(_symbol_temp_usdt)
+                            if _avg_price_temp_usdt[0] == 'OK':
+                                _tot_usd_free      = _tot_usd_free + _avg_price_temp_usdt[1] * _my_asset.get('free')
+                                _tot_usd_locked    = _tot_usd_locked + _avg_price_temp_usdt[1] * _my_asset.get('locked')
+                            else:
+                                self.response_tuple = ('NOK',  _avg_price_temp_usdt[1])
+                                    
                 if self.response_tuple[0] == 'OK':
                     
                      # Add Estimated Value BTC & USD at the first position of the list
-                    _tot_btc    = _tot_btc_free  + _tot_btc_locked
-                    _tot_usd    = _tot_usdt_free + _tot_usdt_locked + _tot_busd_free + _tot_busd_locked
-                     
-                    _my_balance.insert( 0 , { 'totals' : {  'tot_btc_free': _tot_btc_free, 
-                                                            'tot_btc_locked': _tot_btc_locked, 
-                                                            'tot_usdt_free': _tot_usdt_free, 
-                                                            'tot_usdt_locked': _tot_usdt_locked,
-                                                            'tot_busd_free': _tot_busd_free, 
-                                                            'tot_busd_locked': _tot_busd_locked,                                                                                                  
+                    _tot_btc = _tot_btc_free + _tot_btc_locked
+                    _tot_usd = _tot_usd_free + _tot_usd_locked
+
+                    _my_balance.insert( 0 , { 'totals' : {  'tot_btc_free': _tot_btc_free,
+                                                            'tot_btc_locked': _tot_btc_locked,
+                                                            'tot_usd_free': _tot_usd_free,
+                                                            'tot_usd_locked': _tot_usd_locked,
                                                             'tot_btc': _tot_btc,
                                                             'tot_usd': _tot_usd   }   }   )
-                    
+
                     self.response_tuple = ('OK', _my_balance)
-                
-                
+
             else:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_total',_inputs,'balances not in _account_info')}")
 
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-        
-        except Exception as e:
-            
+        except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_balance_total',_inputs,traceback.format_exc(2))}")
-                
+
         return(self.response_tuple)
-        
+
     # Get Account Balance Asset Free  --> spot + margin
-    def account_get_balance_asset_free(self, _wallet, _symbol):
-        
+    def account_get_balance_asset_free(self, p_symbol):
+
         # Prepare 
+        _inputs                 = f"{self.wallet}|{p_symbol}"        
         _asset_balance_response = None
         _bal                    = None
-        _inputs                 = f"{_wallet}|{_symbol}"
-
 
         try:
 
-            if _wallet == 'spot':
+            if self.wallet == 'spot':
 
-
-                _asset_balance_response = self.client[1].get_asset_balance(asset=_symbol)
-            
-                if _asset_balance_response is not None:
-                    if _asset_balance_response.get('free') is not None:
+                _asset_balance_response = self.client.get_asset_balance(asset=p_symbol)
+                if _asset_balance_response:
+                    if _asset_balance_response.get('free'):
                         _bal = Decimal(_asset_balance_response.get('free'))
                         self.response_tuple = ('OK', _bal)
                     else:
@@ -605,282 +570,295 @@ class BinanceAPIClass:
                 else:
                     self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs,'_asset_balance_response is None')}")
 
-
-            elif _wallet == 'margin':
+            elif self.wallet == 'margin':
 
                 _account_info   = None
                 _what_find      = None
                 _what_finds     = "userAssets"
 
-                _account_info = self.client[1].get_margin_account()
-        
+                _account_info = self.client.get_margin_account()
                 if _what_finds in _account_info:
-                    
+
                     for _what_find in _account_info[_what_finds]: # For every Balances
-                        
-                        if _what_find.get('asset') == _symbol.upper():
-                            
+
+                        if _what_find.get('asset') == p_symbol.upper():
                             _bal = Decimal(_what_find.get('free'))
                             self.response_tuple = ('OK',  _bal)
                             break
-                            
                         else:
-                            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs,_symbol+' not found')}")
+                            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs,p_symbol+' not found')}")
                             continue
 
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-                
-        except Exception as e:
-            
+        except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_balance_asset_free',_inputs,traceback.format_exc(2))}")
-    
+
         return(self.response_tuple)
 
     # Calculate Account exact Quantity to BUY --> spot + margin
-    def account_get_quantity_to_buy(self, _wallet, _what_fee, _type, _size, _how2get_qta2buy, _price = None):
-        
+    def account_get_quantity_to_buy(self, p_what_fee, p_type, p_size, p_how2get_qta2buy, p_price = None):
+
         # Prepare
-        _inputs                         = f"{_wallet}|{_what_fee}|{_type}|{_size}|{_price}|{_how2get_qta2buy}|{self.symbol_first}|{self.symbol_second}"
-        _get_tot_symbol                 = f"tot_{self.symbol_second.lower()}" # build Wallet Dict Key
-        symbol_bal_second_free          = None       
-        symbol_bal_second_tot_estimated = None              
-        symbol_step_size                = None
-        symbol_min_qty                  = None
-        symbol_min_notional             = None        
-        symbol_fee                      = None
-        symbol_price                    = None
-        symbol_fee_perc                 = None
-        
+        _inputs                          = f"{self.wallet}|{p_what_fee}|{p_type}|{p_size}|{p_how2get_qta2buy}|{p_price}|{self.symbol_first}|{self.symbol_second}"
+        _symbol_bal_second_free          = None
+        _symbol_bal_second_tot_estimated = None
+        _symbol_lot_size                 = None        
+        _symbol_step_size_value          = None
+        _symbol_min_qty_value            = None
+        _symbol_min_notional             = None
+        _symbol_min_notional_value       = None
+        _symbol_price                    = None
+        _symbol_price_value              = None
+        _symbol_fee                      = None 
+        _symbol_fee_value                = None                        
+        _symbol_fee_perc                 = None
+
         # Prepare Quantity Vars
         quantity_pre_size_applied       = None
-        quantity_post_size_applied      = None     
-        quantity_pre_stepSize_applied   = None
-        quantity_post_stepSize_applied  = None
-        quantity_processed_final        = None      
-
-        # By default rounding setting in python is ROUND_HALF_EVEN
-        getcontext().rounding = ROUND_DOWN
-        
-        # Get Owned Asset Balance Free
-        _symbol_bal_second_free = self.account_get_balance_asset_free(_wallet, self.symbol_second)
-        
-        # GET OWNED TOT ESTIMATED ASSET BALANCE
-        if _how2get_qta2buy == 'total': 
-            
-            if _symbol_bal_second_free[0] == 'OK':
-                _symbol_bal_second_tot_estimated = self.account_get_balance_total(_wallet, _what_based = self.symbol_second.upper() )
-            else:
-                self.response_tuple = ('NOK', _symbol_bal_second_free[1])
-                return(self.response_tuple)
-            
-            # Build bal to use & size
-            if _symbol_bal_second_tot_estimated[0] == 'OK':
-                quantity_pre_size_applied   = _symbol_bal_second_tot_estimated[1][0].get('totals').get(_get_tot_symbol)
-                quantity_post_size_applied  = round( quantity_pre_size_applied / 100 *  Decimal(_size) , 5 )
-            else:
-                self.response_tuple = ('NOK', _symbol_bal_second_tot_estimated[1])
-                return(self.response_tuple)
-                
-            # STOP Qta to sell TO Real Free Qta
-            if quantity_post_size_applied > _symbol_bal_second_free[1]:
-                quantity_post_size_applied = _symbol_bal_second_free[1] 
-        
-        # GET OWNED AVAILABLE ASSET BALANCE
-        elif _how2get_qta2buy == 'only_available':
-             
-            # Build bal to use & size
-            if _symbol_bal_second_free[0] == 'OK':
-                quantity_pre_size_applied   = _symbol_bal_second_free[1]
-                quantity_post_size_applied  = round( quantity_pre_size_applied / 100 *  Decimal(_size) , 5 )
-            else:
-                self.response_tuple = ('NOK', _symbol_bal_second_free[1])
-                return(self.response_tuple)
-        else:
-            
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_buy',_inputs,'_how unknown')}")
-            return(self.response_tuple)
-
-        # Get Symbol Filter LOT_SIZE
-        _symbol_lot_size = self.general_get_symbol_info_filter('LOT_SIZE')
-
-        # Get Symbol Filter MIN_NOTIONAL
-        if _symbol_lot_size[0] == 'OK':
-            _symbol_min_notional = self.general_get_symbol_info_filter('MIN_NOTIONAL')
-        else:
-            self.response_tuple = ('NOK',  _symbol_lot_size[1])
-            return(self.response_tuple)
-
-        # Get Symbol Fee Cost
-        if _symbol_min_notional[0] == 'OK':
-            _symbol_fee = self.general_get_symbol_fee_cost(_what_fee)
-        else:
-            self.response_tuple = ('NOK', _symbol_min_notional[1])
-            return(self.response_tuple)
-
-        # Get Symbol Price or Symbol Avg Price
-        if _type == 'market':
-            
-            # Get Symbol Avg Price
-            if _symbol_fee[0] == 'OK':
-                _symbol_price = self.general_get_symbol_avg_price()
-            else:
-                self.response_tuple = ('NOK',  _symbol_fee[1])
-                return(self.response_tuple)
-                
-        elif (_type == 'limit' or _type == 'stop_limit' or _type == 'oco') and _price is not None:
-            
-            # SET OK only for the following if 
-            # -> in case of order limit the price is a input so it is useless to calculate the average price 
-            _symbol_price = tuple( ( 'OK' , Decimal(_price) ) )
-        
-        # Calculate Quantity End
-        if _symbol_price[0] == 'OK':
-            
-            symbol_step_size        = _symbol_lot_size[1].get('LOT_SIZE_step_size')
-            symbol_min_qty          = _symbol_lot_size[1].get('LOT_SIZE_minQty')
-            symbol_min_notional     = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
-            symbol_fee              = _symbol_fee[1]        
-            symbol_price            = _symbol_price[1]
-                           
-            symbol_fee_perc                 = (100 - symbol_fee) / 100 
-            quantity_pre_stepSize_applied   = (quantity_post_size_applied / symbol_price) * symbol_fee_perc
-            quantity_post_stepSize_applied  = self.my_truncate_by_step_size(quantity_pre_stepSize_applied, symbol_step_size)
-            
-            if quantity_post_stepSize_applied[0] == 'OK':
-                
-                quantity_processed_final = quantity_post_stepSize_applied[1]
-                
-                if quantity_processed_final > symbol_min_qty:
-                    
-                    if (symbol_price * quantity_processed_final) > symbol_min_notional:
-                        
-                        """
-                        if _size == 100:
-                            quantity_processed_final = quantity_processed_final - symbol_step_size # To avoid "Account has insufficient balance for requested action" if there is a pump in progress
-                        """
-                        
-                        self.response_tuple = ('OK', tuple((quantity_processed_final, quantity_pre_size_applied, quantity_post_size_applied)) )
-                    
-                    else:
-                        _msg                = f"Quantity * Price (= {quantity_pre_stepSize_applied*symbol_price:.10f}) to make BUY is not > Symbol Min Notional Qty (= {symbol_min_notional})"
-                        self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_buy',_inputs,_msg)}")
-
-                else:
-                    _msg                = f"Quantity (= {quantity_pre_stepSize_applied:.10f}) to make BUY is not > Symbol Min Qty (= {symbol_min_qty})"
-                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_buy',_inputs,_msg)}")
-
-        else:
-            self.response_tuple = ('NOK',  _symbol_price[1])
-    
-        return(self.response_tuple)
-
-    # Calculate Account exact Quantity to SELL --> spot + margin
-    def account_get_quantity_to_sell(self, _wallet, _type, _size, _price = None):
-        
-        # Prepare
-        _inputs                     = f"{_wallet}|{_type}|{_size}|{_price}|{self.symbol_first}|{self.symbol_second}"      
-        symbol_step_size            = None
-        symbol_min_qty              = None
-        symbol_min_notional         = None
-        symbol_price                = None
-        
-        # Prepare Quantity Vars
-        quantity_pre_size_applied       = None
-        quantity_post_size_applied      = None     
+        quantity_post_size_applied      = None
         quantity_pre_stepSize_applied   = None
         quantity_post_stepSize_applied  = None
         quantity_processed_final        = None
-      
-        # Get Owned Asset Balance Free
-        _symbol_bal_first_free = self.account_get_balance_asset_free(_wallet, self.symbol_first)       
 
-        # Build bal to use & size
-        if _symbol_bal_first_free[0] == 'OK':
-            quantity_pre_size_applied   = _symbol_bal_first_free[1]
-            quantity_post_size_applied  = quantity_pre_size_applied / 100 *  Decimal(_size)
+        # By default rounding setting in python is ROUND_HALF_EVEN
+        getcontext().rounding = ROUND_DOWN
+
+        """ Get Owned Second Asset Balance Free """
+        _symbol_bal_second_free = self.account_get_balance_asset_free(self.symbol_second)
+        if _symbol_bal_second_free[0] != 'OK':        
+            self.response_tuple = ('NOK', _symbol_bal_second_free[1])
+            return(self.response_tuple)
+                
+        """ Get Owned Second Asset Balance """
+        if p_how2get_qta2buy == 'total':
+
+            # Symbol Bal Second TOT Estimated Asset Balance
+            _symbol_bal_second_tot_estimated = self.account_get_balance_total()
+            if _symbol_bal_second_tot_estimated[0] == 'OK':
+                quantity_pre_size_applied = _symbol_bal_second_tot_estimated[1][0].get('totals').get(f"tot_{self.symbol_second.lower()}")                
+            else:
+                self.response_tuple = ('NOK', _symbol_bal_second_tot_estimated[1])
+                return(self.response_tuple)
+
+        elif p_how2get_qta2buy == 'only_available':
+
+            # Symbol Bal Second AVAILABLE Asset Balance
+            quantity_pre_size_applied = _symbol_bal_second_free[1]
+
+        """ Build bal to use & size """
+        try:
+            quantity_post_size_applied = round( quantity_pre_size_applied / 100 *  Decimal(p_size) , 5 )
+            # Stop Qta to BUY TO Real Free Qta
+            if quantity_post_size_applied > _symbol_bal_second_free[1]:
+                quantity_post_size_applied = _symbol_bal_second_free[1]            
+        except Exception:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        """ Get Symbol Filter LOT_SIZE """
+        _symbol_lot_size = self.general_get_symbol_info_filter('LOT_SIZE')
+        if _symbol_lot_size[0] != 'OK':
+            self.response_tuple = ('NOK',  _symbol_lot_size[1])
+            return(self.response_tuple)                    
+
+        """ Get Symbol Filter MIN_NOTIONAL """
+        _symbol_min_notional = self.general_get_symbol_info_filter('MIN_NOTIONAL')
+        if _symbol_min_notional[0] != 'OK':
+            self.response_tuple = ('NOK', _symbol_min_notional[1])
+            return(self.response_tuple)
+
+        """ Get Symbol Fee Cost """
+        _symbol_fee = self.general_get_symbol_fee_cost(p_what_fee)
+        if _symbol_fee[0] != 'OK':
+            self.response_tuple = ('NOK',  _symbol_fee[1])
+            return(self.response_tuple)
+
+        """ Get Symbol Avg Price or Symbol Input Price """
+        if p_type == 'market':
+            _symbol_price = self.general_get_symbol_avg_price() # Avg Price
+            if _symbol_price[0] != 'OK':
+                self.response_tuple = ('NOK',  _symbol_price[1])
+                return(self.response_tuple)
+        elif (p_type == 'limit' or p_type == 'stop_limit' or p_type == 'oco') and p_price:
+            try:
+                _symbol_price = tuple( ( 'OK' , Decimal(p_price) ) ) # Input Price
+            except Exception:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs,traceback.format_exc(2))}")
+                return(self.response_tuple)
+
         else:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_buy',_inputs,'p_type unknown or p_price is None')}")
+            return(self.response_tuple)
+
+        """ Calculate Quantity End """
+        
+        _symbol_min_qty_value          = _symbol_lot_size[1].get('LOT_SIZE_minQty')        
+        _symbol_step_size_value        = _symbol_lot_size[1].get('LOT_SIZE_step_size')
+        _symbol_min_notional_value     = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
+        _symbol_fee_value              = _symbol_fee[1]
+        _symbol_price_value            = _symbol_price[1]
+        
+        # Fee % Applied
+        try:
+            _symbol_fee_perc                = (100 - _symbol_fee_value) / 100
+            quantity_pre_stepSize_applied   = (quantity_post_size_applied / _symbol_price_value) * _symbol_fee_perc
+        except Exception:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Truncate By Step Size
+        quantity_post_stepSize_applied = self.truncate_by_step_size(quantity_pre_stepSize_applied, _symbol_step_size_value)
+        if quantity_post_stepSize_applied[0] != 'OK':
+            _msg                = quantity_post_stepSize_applied[1]
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_buy',_inputs,_msg)}")
+            return(self.response_tuple)
+        quantity_processed_final = quantity_post_stepSize_applied[1]
+        
+        # Output
+        if quantity_processed_final > _symbol_min_qty_value:
+
+            if (_symbol_price_value * quantity_processed_final) > _symbol_min_notional_value:
+
+                """
+                if p_size == 100:
+                    quantity_processed_final = quantity_processed_final - _symbol_step_size_value # To avoid "Account has insufficient balance for requested action" if there is a pump in progress
+                """
+
+                self.response_tuple = ('OK', tuple((quantity_processed_final, quantity_pre_size_applied, quantity_post_size_applied)) )
+
+            else:
+                _msg                = f"Quantity * Price (= {quantity_pre_stepSize_applied*_symbol_price_value:.10f}) to make BUY is not > Symbol Min Notional Qty (= {_symbol_min_notional_value})"
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_buy',_inputs,_msg)}")
+
+        else:
+            _msg                = f"Quantity (= {quantity_pre_stepSize_applied:.10f}) to make BUY is not > Symbol Min Qty (= {_symbol_min_qty_value})"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_buy',_inputs,_msg)}")
+
+        return(self.response_tuple)
+
+    # Calculate Account exact Quantity to SELL --> spot + margin
+    def account_get_quantity_to_sell(self, p_type, p_size, p_price = None):
+
+        # Prepare
+        _inputs                     = f"{self.wallet}|{p_type}|{p_size}|{p_price}|{self.symbol_first}|{self.symbol_second}"
+        _symbol_step_size_value     = None
+        _symbol_min_qty_value       = None
+        _symbol_min_notional        = None
+        _symbol_lot_size            = None
+        _symbol_min_notional_value  = None        
+        _symbol_price               = None
+        _symbol_price_value         = None
+        
+
+        # Prepare Quantity Vars
+        quantity_pre_size_applied       = None
+        quantity_post_size_applied      = None
+        quantity_pre_stepSize_applied   = None
+        quantity_post_stepSize_applied  = None
+        quantity_processed_final        = None
+
+        """ Get Owned Asset Balance Free """
+        _symbol_bal_first_free = self.account_get_balance_asset_free(self.symbol_first)
+        if _symbol_bal_first_free[0] != 'OK':
             self.response_tuple = ('NOK',  _symbol_bal_first_free[1])
             return(self.response_tuple)
-            
-        # Get Symbol LOT SIZE
-        _symbol_lot_size = self.general_get_symbol_info_filter('LOT_SIZE')
 
-        # Get Symbol Filter MIN_NOTIONAL
-        if _symbol_lot_size[0] == 'OK':
-            _symbol_min_notional = self.general_get_symbol_info_filter('MIN_NOTIONAL')
-        else:
+        """ Build bal to use & size """
+        quantity_pre_size_applied = _symbol_bal_first_free[1]
+        try:
+            quantity_post_size_applied  = quantity_pre_size_applied / 100 *  Decimal(p_size)
+            # Stop Qta to SELL TO Real Free Qta
+            if quantity_post_size_applied > _symbol_bal_first_free[1]:
+                quantity_post_size_applied = _symbol_bal_first_free[1]            
+        except Exception:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        """ Get Symbol LOT SIZE """
+        _symbol_lot_size = self.general_get_symbol_info_filter('LOT_SIZE')
+        if _symbol_lot_size[0] != 'OK':
             self.response_tuple = ('NOK',  _symbol_lot_size[1])
             return(self.response_tuple)
-        
-        # Get Symbol Price or Symbol Avg Price
-        if _type == 'market':
-            
-            # Get Symbol Avg Price
-            if _symbol_min_notional[0] == 'OK':
-                _symbol_price = self.general_get_symbol_avg_price()
-            else:
-                self.response_tuple = ('NOK',  _symbol_min_notional[1])
-                return(self.response_tuple)
-                
-        elif (_type == 'limit' or _type == 'stop_limit' or _type == 'oco') and _price is not None:
-            
-            # SET OK only for the following if 
-            # -> in case of order limit the price is a input so it is useless to calculate the average price 
-            _symbol_price = tuple( ( 'OK' , Decimal(_price) ) )
 
-        else:
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_sell',_inputs,'_type unknown or _price is None')}")
+        """ Get Symbol Filter MIN_NOTIONAL """
+        _symbol_min_notional = self.general_get_symbol_info_filter('MIN_NOTIONAL')
+        if _symbol_min_notional[0] != 'OK':
+            self.response_tuple = ('NOK',  _symbol_min_notional[1])
             return(self.response_tuple)
 
-        # Calculate Quantity End
-        if _symbol_price[0] == 'OK':
-            
-            symbol_step_size    = _symbol_lot_size[1].get('LOT_SIZE_step_size')
-            symbol_min_qty      = _symbol_lot_size[1].get('LOT_SIZE_minQty')
-            symbol_min_notional = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
-            symbol_price        = _symbol_price[1]
-                        
-            quantity_pre_stepSize_applied   = Decimal(quantity_post_size_applied)
-            quantity_post_stepSize_applied  = self.my_truncate_by_step_size(quantity_pre_stepSize_applied, symbol_step_size)
-            
-            if quantity_post_stepSize_applied[0] == 'OK':
-                
-                quantity_processed_final = quantity_post_stepSize_applied[1]
-                if quantity_processed_final > symbol_min_qty:
-                    
-                    if (symbol_price * quantity_processed_final) > symbol_min_notional:
-                        self.response_tuple = ('OK', tuple(( quantity_processed_final, quantity_pre_size_applied, quantity_post_size_applied )) )
-                    else:
-                        _msg                = f"Quantity * Price (= {quantity_pre_stepSize_applied*symbol_price:.10f}) to make SELL is not > Symbol Min Notional Qty (= {symbol_min_notional})"
-                        self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_sell',_inputs,_msg)}")
-                        
-                else:
-                    _msg                = f"Quantity (= {quantity_pre_stepSize_applied:.10f}) to make SELL is not > Symbol Min Qty (= {symbol_min_qty})"
-                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_sell',_inputs,_msg)}")
+        """ Get Symbol Avg Price or Symbol Input Price """
+        if p_type == 'market':
+            _symbol_price = self.general_get_symbol_avg_price() # Avg Price
+            if _symbol_price[0] != 'OK':
+                self.response_tuple = ('NOK',  _symbol_price[1])
+                return(self.response_tuple)                            
+        elif (p_type == 'limit' or p_type == 'stop_limit' or p_type == 'oco') and p_price:
+            try:
+                _symbol_price = tuple( ( 'OK' , Decimal(p_price) ) ) # Symbol Input Price
+            except Exception:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs,traceback.format_exc(2))}")
+                return(self.response_tuple)
+        else:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_sell',_inputs,'p_type unknown or p_price is None')}")
+            return(self.response_tuple)
+
+        """ Calculate Quantity End """
+
+        _symbol_step_size_value    = _symbol_lot_size[1].get('LOT_SIZE_step_size')
+        _symbol_min_qty_value      = _symbol_lot_size[1].get('LOT_SIZE_minQty')
+        _symbol_min_notional_value = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
+        _symbol_price_value        = _symbol_price[1]
+        
+        try:
+            quantity_pre_stepSize_applied = Decimal(quantity_post_size_applied)
+        except Exception:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+        
+        # Truncate By Step Size
+        quantity_post_stepSize_applied = self.truncate_by_step_size(quantity_pre_stepSize_applied, _symbol_step_size_value)
+        if quantity_post_stepSize_applied[0] != 'OK':
+            _msg                = quantity_post_stepSize_applied[1]
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_sell',_inputs,_msg)}")
+            return(self.response_tuple)            
+        
+        # Output
+        quantity_processed_final = quantity_post_stepSize_applied[1]
+        if quantity_processed_final > _symbol_min_qty_value:
+
+            if (_symbol_price_value * quantity_processed_final) > _symbol_min_notional_value:
+                self.response_tuple = ('OK', tuple(( quantity_processed_final, quantity_pre_size_applied, quantity_post_size_applied )) )
+            else:
+                _msg                = f"Quantity * Price (= {quantity_pre_stepSize_applied*_symbol_price_value:.10f}) to make SELL is not > Symbol Min Notional Qty (= {_symbol_min_notional_value})"
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_sell',_inputs,_msg)}")
 
         else:
-            self.response_tuple = ('NOK',  _symbol_price[1])
-    
+            _msg                = f"Quantity (= {quantity_pre_stepSize_applied:.10f}) to make SELL is not > Symbol Min Qty (= {_symbol_min_qty_value})"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_quantity_to_sell',_inputs,_msg)}")
+
+
         return(self.response_tuple)
 
 
     """ ORDER """
-    
+
     # Create a Order Wallet --> spot + margin
-    def account_create_order(self, _wallet, _type, _side, _size, _limit = None, _stop = None, _price = None):
-        
+    def account_create_order(self, p_type, p_side, p_size, p_limit = None, p_stop = None, p_price = None):
+
         # Prepare
-        _inputs                     = f"{_wallet}|{_type}|{_side}|{_size}|{_limit}|{_stop}|{_price}|{self.symbol_first}|{self.symbol_second}"
+        _inputs                     = f"{self.wallet}|{p_type}|{p_side}|{p_size}|{p_limit}|{p_stop}|{p_price}|{self.symbol_first}|{self.symbol_second}"
         _how2get_qta2buy            = 'only_available'
         _quantity_calculated_result = None
-        _quantity_to_use            = None         
-        _quantity_pre_size_applied  = None         
-        _quantity_post_size_applied = None       
+        _quantity_to_use            = None
+        _quantity_pre_size_applied  = None
+        _quantity_post_size_applied = None
         _symbol_exists              = None
-        
+        _client_type                = None
+        _client_timeinforce         = None
+        _what_fee                   = None
+
         # Check if Symbol Exists
         _symbol_exists = self.general_check_if_symbol_exists()
         if _symbol_exists[0] == 'NOK':
@@ -888,323 +866,308 @@ class BinanceAPIClass:
             return(self.response_tuple)
 
         # Choose TYPE & FEE
-        if _type == 'market':
-            _client_type        = self.client[1].ORDER_TYPE_MARKET
+        if p_type == 'market':
+            _client_type        = self.client.ORDER_TYPE_MARKET
             _what_fee           = 'taker' # --> I'm going to Market so it's a taker
-        elif _type == 'limit':
-            _client_type        = self.client[1].ORDER_TYPE_LIMIT
-            _client_timeinforce = self.client[1].TIME_IN_FORCE_GTC            
+        elif p_type == 'limit':
+            _client_type        = self.client.ORDER_TYPE_LIMIT
+            _client_timeinforce = self.client.TIME_IN_FORCE_GTC
             _what_fee           = 'maker' # --> I'm going to Price so it's a maker
-        elif _type == 'stop_limit':
-            _client_type        = self.client[1].ORDER_TYPE_STOP_LOSS_LIMIT
-            _client_timeinforce = self.client[1].TIME_IN_FORCE_GTC            
+        elif p_type == 'stop_limit':
+            _client_type        = self.client.ORDER_TYPE_STOP_LOSS_LIMIT
+            _client_timeinforce = self.client.TIME_IN_FORCE_GTC
             _what_fee           = 'maker' # --> I'm going to Price so it's a maker
-        elif _type == 'oco':
-            _client_timeinforce = self.client[1].TIME_IN_FORCE_GTC            
-            _what_fee           = 'maker' # --> I'm going to Price so it's a maker               
+        elif p_type == 'oco':
+            _client_timeinforce = self.client.TIME_IN_FORCE_GTC
+            _what_fee           = 'maker' # --> I'm going to Price so it's a maker
         else:
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'_type unknown')}")
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs, p_type+' unknown')}")
             return(self.response_tuple)
 
         # Choose SIDE and calculate QUANTITY
-        if _side == 'sell':
-    
-            _client_side                = self.client[1].SIDE_SELL
-            _quantity_calculated_result = self.account_get_quantity_to_sell(_wallet, _type, _size, _limit)
+        if p_side == 'sell':
+            _client_side                = self.client.SIDE_SELL
+            _quantity_calculated_result = self.account_get_quantity_to_sell(p_type, p_size, p_limit)
             if _quantity_calculated_result[0] == 'OK':
                 _quantity_to_use            = _quantity_calculated_result[1][0]
                 _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
-                _quantity_post_size_applied = _quantity_calculated_result[1][2]                
-            else:
-                self.response_tuple = ('NOK',  _quantity_calculated_result[1])
-                return(self.response_tuple)                         
-                 
-        elif _side == 'buy':
-            
-            _client_side                = self.client[1].SIDE_BUY      
-            _quantity_calculated_result = self.account_get_quantity_to_buy(_wallet, _what_fee, _type, _size, _how2get_qta2buy, _limit)
-            if _quantity_calculated_result[0] == 'OK':
-                _quantity_to_use            = _quantity_calculated_result[1][0]
-                _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
-                _quantity_post_size_applied = _quantity_calculated_result[1][2]                
+                _quantity_post_size_applied = _quantity_calculated_result[1][2]
             else:
                 self.response_tuple = ('NOK',  _quantity_calculated_result[1])
                 return(self.response_tuple)
-            
+        elif p_side == 'buy':
+            _client_side                = self.client.SIDE_BUY
+            _quantity_calculated_result = self.account_get_quantity_to_buy(_what_fee, p_type, p_size, _how2get_qta2buy, p_limit)
+            if _quantity_calculated_result[0] == 'OK':
+                _quantity_to_use            = _quantity_calculated_result[1][0]
+                _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
+                _quantity_post_size_applied = _quantity_calculated_result[1][2]
+            else:
+                self.response_tuple = ('NOK',  _quantity_calculated_result[1])
+                return(self.response_tuple)
         else:
-            self.response_tuple = ('NOK', _minQty_temp[1])
+            self.response_tuple = ('NOK', f"{utility.my_log('Error', 'account_create_order', _inputs, p_side+' unknown')}")
             return(self.response_tuple)
-        
 
         # Create ORDER
-        if _type == 'market':
+        if p_type == 'market':
 
             try:
-                
-                if _wallet == 'spot':
-                
-                    _order = self.client[1].create_order(   symbol      = self.symbol,
-                                                            side        = _client_side,
-                                                            type        = _client_type,
-                                                            quantity    = _quantity_to_use   )
-                elif _wallet == 'margin': 
-                                                                                                       
-                    _order = self.client[1].create_margin_order(    symbol      = self.symbol,
-                                                                    side        = _client_side,
-                                                                    type        = _client_type,
-                                                                    quantity    = _quantity_to_use   )
-                                                                                                  
+
+                if self.wallet == 'spot':
+
+                    _order = self.client.create_order(  symbol      = self.symbol,
+                                                        side        = _client_side,
+                                                        type        = _client_type,
+                                                        quantity    = _quantity_to_use   )
+                elif self.wallet == 'margin':
+
+                    _order = self.client.create_margin_order(   symbol      = self.symbol,
+                                                                side        = _client_side,
+                                                                type        = _client_type,
+                                                                quantity    = _quantity_to_use   )
+
                 self.response_tuple = ('OK', tuple(( _order, _quantity_pre_size_applied, _quantity_post_size_applied)) )
-            
+
             except BinanceAPIException as e:
-            
                 _error = str(e).split(":")[1]
-                self.response_tuple = ('NOK',  _error)                
-            
+                self.response_tuple = ('NOK',  _error)
             except:
-                
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_create_order',_inputs,traceback.format_exc())}")
-            
-        elif _type == 'limit':   
-            
-            if _limit is None:
+
+        elif p_type == 'limit':
+
+            if not p_limit:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'Order Limit without limit price input')}")
                 return(self.response_tuple)
-            
+
             try:
-                
-                if _wallet == 'spot':
-                    
-                    _order = self.client[1].create_order(   symbol      = self.symbol,
-                                                            side        = _client_side,
-                                                            type        = _client_type,
-                                                            timeInForce = _client_timeinforce,
-                                                            quantity    = _quantity_to_use,
-                                                            price       = _limit    )
-                elif _wallet == 'margin': 
-                    
-                    _order = self.client[1].create_margin_order(    symbol      = self.symbol,
-                                                                    side        = _client_side,
-                                                                    type        = _client_type,
-                                                                    timeInForce = _client_timeinforce,
-                                                                    quantity    = _quantity_to_use,
-                                                                    price       = _limit    )
-                                                                                    
+
+                if self.wallet == 'spot':
+
+                    _order = self.client.create_order(  symbol      = self.symbol,
+                                                        side        = _client_side,
+                                                        type        = _client_type,
+                                                        timeInForce = _client_timeinforce,
+                                                        quantity    = _quantity_to_use,
+                                                        price       = p_limit    )
+                elif self.wallet == 'margin':
+
+                    _order = self.client.create_margin_order(   symbol      = self.symbol,
+                                                                side        = _client_side,
+                                                                type        = _client_type,
+                                                                timeInForce = _client_timeinforce,
+                                                                quantity    = _quantity_to_use,
+                                                                price       = p_limit    )
+
                 self.response_tuple = ('OK', tuple(( _order, _quantity_pre_size_applied, _quantity_post_size_applied)) )
-            
+
             except BinanceAPIException as e:
-            
                 _error = str(e).split(":")[1]
-                self.response_tuple = ('NOK',  _error)                
-            
+                self.response_tuple = ('NOK',  _error)
             except:
-                
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_create_order',_inputs,traceback.format_exc())}")
 
-        elif _type == 'stop_limit':   
-            
-            if _limit is None:
+        elif p_type == 'stop_limit':
+
+            if not p_limit:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'Order Stop Limit without LIMIT input')}")
                 return(self.response_tuple)
-                
-            if _stop is None:
+
+            if not p_stop:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'Order Stop Limit without STOP input')}")
                 return(self.response_tuple)
-                
+
             try:
 
-                if _wallet == 'spot':
-                
-                    _order = self.client[1].create_order(   symbol      = self.symbol,
-                                                            side        = _client_side,
-                                                            type        = _client_type,
-                                                            timeInForce = _client_timeinforce,
-                                                            quantity    = _quantity_to_use,
-                                                            price       = _limit,
-                                                            stopPrice   = _stop )
-                elif _wallet == 'margin': 
-                    
-                    _order = self.client[1].create_margin_order(    symbol      = self.symbol,
-                                                                    side        = _client_side,
-                                                                    type        = _client_type,
-                                                                    timeInForce = _client_timeinforce,
-                                                                    quantity    = _quantity_to_use,
-                                                                    price       = _limit,
-                                                                    stopPrice   = _stop )
-                    
+                if self.wallet == 'spot':
+
+                    _order = self.client.create_order(  symbol      = self.symbol,
+                                                        side        = _client_side,
+                                                        type        = _client_type,
+                                                        timeInForce = _client_timeinforce,
+                                                        quantity    = _quantity_to_use,
+                                                        price       = p_limit,
+                                                        stopPrice   = p_stop )
+                elif self.wallet == 'margin':
+
+                    _order = self.client.create_margin_order(   symbol      = self.symbol,
+                                                                side        = _client_side,
+                                                                type        = _client_type,
+                                                                timeInForce = _client_timeinforce,
+                                                                quantity    = _quantity_to_use,
+                                                                price       = p_limit,
+                                                                stopPrice   = p_stop )
+
                 self.response_tuple = ('OK', tuple(( _order, _quantity_pre_size_applied, _quantity_post_size_applied)) )
-                
+
             except BinanceAPIException as e:
-            
                 _error = str(e).split(":")[1]
-                self.response_tuple = ('NOK',  _error)                
-            
+                self.response_tuple = ('NOK',  _error)
             except:
-                
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_create_order',_inputs,traceback.format_exc())}")
 
-        elif _type == 'oco':   
+        elif p_type == 'oco':
 
-            if _limit is None:
+            if not p_limit:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'Order OCO without LIMIT input')}")
                 return(self.response_tuple)
 
-            if _stop is None:
+            if not p_stop:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'Order OCO without STOP input')}")
                 return(self.response_tuple)
-            
-            if _price is None:
+
+            if not p_price:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'Order OCO without PRICE input')}")
                 return(self.response_tuple)
-                
+
             try:
-                
-                if _wallet == 'spot':
-                    
-                    _order = self.client[1].create_oco_order(   symbol                  = self.symbol,
-                                                                side                    = _client_side,
-                                                                stopLimitTimeInForce    = _client_timeinforce,
-                                                                quantity                = _quantity_to_use,
-                                                                stopLimitPrice          = _limit,                                                            
-                                                                stopPrice               = _stop,
-                                                                price                   = _price    )
+
+                if self.wallet == 'spot':
+
+                    _order = self.client.create_oco_order(  symbol                  = self.symbol,
+                                                            side                    = _client_side,
+                                                            stopLimitTimeInForce    = _client_timeinforce,
+                                                            quantity                = _quantity_to_use,
+                                                            stopLimitPrice          = p_limit,
+                                                            stopPrice               = p_stop,
+                                                            price                   = p_price    )
 
                     self.response_tuple = ('OK', tuple(( _order, _quantity_pre_size_applied, _quantity_post_size_applied)) )
 
-                elif _wallet == 'margin': 
-                    
-                     self.response_tuple = ('NOK', f"{ utility.my_log('Error','account_create_order',_inputs,'no margin oco order')}" )
-                    
-               
-                
+                elif self.wallet == 'margin':
+
+                     self.response_tuple = ('NOK', f"{ utility.my_log('Error','account_create_order',_inputs,'no margin oco order exist')}" )
+
+
+
             except BinanceAPIException as e:
-            
                 _error = str(e).split(":")[1]
-                self.response_tuple = ('NOK',  _error)                
-            
+                self.response_tuple = ('NOK',  _error)
             except:
-                
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_create_order',_inputs,traceback.format_exc())}")
 
         else:
-            
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'_type unknown')}")
+
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_create_order',_inputs,'p_type unknown')}")
 
         return(self.response_tuple)
 
     # Get Account Open Orders
-    def account_get_open_orders(self, _wallet, _symbol_input = None):
+    def account_get_open_orders(self, p_symbol_input = None):
 
         # Prepare
-        _inputs = f"{_wallet}|{_symbol_input}"
-        
+        _inputs = f"{self.wallet}|{p_symbol_input}"
+        _my_openorders = None
+
         try:
-            if _symbol_input is None:
-                if _wallet == 'spot':
-                    _my_openorders  = self.client[1].get_open_orders()
-                elif _wallet == 'margin':
-                    _my_openorders  = self.client[1].get_open_margin_orders()
+            if not p_symbol_input:
+                if self.wallet == 'spot':
+                    _my_openorders  = self.client.get_open_orders()
+                elif self.wallet == 'margin':
+                    _my_openorders  = self.client.get_open_margin_orders()
                 self.response_tuple = ('OK', _my_openorders)
             else:
-                if _wallet == 'spot':                
-                    _my_openorders  = self.client[1].get_open_orders(symbol=_symbol_input)
-                elif _wallet == 'margin':
-                    _my_openorders  = self.client[1].get_open_margin_orders(symbol=_symbol_input)                     
+                if self.wallet == 'spot':
+                    _my_openorders  = self.client.get_open_orders(symbol=p_symbol_input)
+                elif self.wallet == 'margin':
+                    _my_openorders  = self.client.get_open_margin_orders(symbol=p_symbol_input)
                 self.response_tuple = ('OK', _my_openorders)
-                
+
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-            
         except:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_open_orders',_inputs,traceback.format_exc(2))}")
-            
-            
+
         return(self.response_tuple)
 
     # Cancel a Account Order
-    def account_cancel_order(self, _wallet, _symbol_input, _orderid):
+    def account_cancel_order(self, p_symbol_input, p_orderid):
 
         # Prepare
-        _inputs         = f"{_wallet}|{_symbol_input}|{_orderid}"
+        _inputs         = f"{self.wallet}|{p_symbol_input}|{p_orderid}"
         _result_raw     = None
-        
+
         try:
-            if _wallet == 'spot':
-                _result_raw = self.client[1].cancel_order( symbol = _symbol_input, orderId =_orderid)
-            elif _wallet == 'margin':            
-                _result_raw = self.client[1].cancel_margin_order( symbol = _symbol_input, orderId =_orderid)
+            if self.wallet == 'spot':
+                _result_raw = self.client.cancel_order( symbol = p_symbol_input, orderId =p_orderid)
+            elif self.wallet == 'margin':
+                _result_raw = self.client.cancel_margin_order( symbol = p_symbol_input, orderId =p_orderid)
             self.response_tuple = ('OK', _result_raw)
 
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
-            return(self.response_tuple)
-        
         except:
-        
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_cancel_order',_inputs,traceback.format_exc())}")
-            return(self.response_tuple)
 
         return(self.response_tuple)
-    
+
 
     """ FORMAT BINANCE RESULT """
-    
+
     # Format Spot Open Orders Results
-    def account_format_open_orders_result(self, _result):
+    def account_format_open_orders_result(self, p_result):
 
         # Prepare
-        _inputs         = f"{_result}"
-        _dict           = {}
-        _list_result    = []
-        _type_result    = None
-        _date           = None        
-        
+        _inputs         = f"{p_result}"
+        _dict_result    = {}        
+        _type           = None
+        _date           = None
+        _orderListId    = None                      
+        _list_output    = []
+
         # Build Output --> for each order found
-        for _dict in _result:
+        for _dict_result in p_result:
+
+            # Get Type
+            if _dict_result.get('type'):            
+                _type = _dict_result.get('type').upper()
             
-            if _dict.get('time') is not None:
-                _date = utility.timestamp_formatter(_dict.get('time')) 
+            # Get&Format Date
+            if _dict_result.get('time'):
+                _date = utility.timestamp_formatter(_dict_result.get('time'))
+
+            # Get orderListId for OCO Order
+            if _dict_result.get('orderListId') != -1:
+                _orderListId = _dict_result.get('orderListId')
+
+            """ COMMON """
+            _row0   = f"Date: {_date}"
+            _row1   = f"ExchangeOrderID: {_dict_result.get('orderId')}"
+            _row3   = f"Symbol: {_dict_result.get('symbol')}"
+            _row4   = f"Side: {_dict_result.get('side')}"
+            _row5   = f"Quantity: {_dict_result.get('origQty')}"
             
-            # Common
-            _row0   = f"Date: {_date}"             
-            _row1   = f"ExchangeOrderID: {_dict.get('orderId')}"
-            _row3   = f"Symbol: {_dict.get('symbol')}"
-            _row4   = f"Side: {_dict.get('side')}" 
-            _row5   = f"Quantity: {_dict.get('origQty')}"  
-        
-            _type_result = _dict.get('type').upper()
-            
-            if _type_result == 'MARKET': # Market Type Order
-                
+            # Build Output
+            if _type == 'MARKET': # MARKET TYPE ORDER 
+
                 _row_m_2    =   f"Type: Market"
-                
+
                 _message    =   f"{_row0} {chr(10)}"\
                                 f"{_row1} {chr(10)}"\
                                 f"{_row_m_2} {chr(10)}"\
                                 f"{_row3} {chr(10)}"\
                                 f"{_row4} {chr(10)}"\
                                 f"{_row5}"
-        
-            elif _type_result == 'LIMIT' or _type_result == 'LIMIT_MAKER': # Limit Type Order
-                
-                _row_l_2    =   f"Type: Limit"
-                _row_l_6    =   f"Price: {_dict.get('price')}"
-                
-                if _dict.get('orderListId') != -1:
-                    _row_o_1    =   f"OrderOCOId: {_dict.get('orderListId')}"
+
+            elif _type == 'LIMIT' or _type == 'LIMIT_MAKER': # LIMIT TYPE ORDER 
+
+                _row_l_2        =   f"Type: Limit"
+                _row_l_6        =   f"Price: {_dict_result.get('price')}"
+                _row_o_0        =   f"OrderOCOId: {_orderListId}" # For OCO Order               
+
+                if _orderListId:
                     _message    =   f"{_row0} {chr(10)}"\
-                                    f"{_row_o_1} {chr(10)}"\
+                                    f"{_row_o_0} {chr(10)}"\
                                     f"{_row1} {chr(10)}"\
                                     f"{_row_l_2} {chr(10)}"\
                                     f"{_row3} {chr(10)}"\
                                     f"{_row4} {chr(10)}"\
                                     f"{_row5} {chr(10)}"\
                                     f"{_row_l_6}"
-                else:                                                                                
+                else:
                     _message    =   f"{_row0} {chr(10)}"\
                                     f"{_row1} {chr(10)}"\
                                     f"{_row_l_2} {chr(10)}"\
@@ -1213,16 +1176,16 @@ class BinanceAPIClass:
                                     f"{_row5} {chr(10)}"\
                                     f"{_row_l_6}"
 
-            elif _type_result == 'STOP_LOSS_LIMIT': # Stop Limit Type Order
+            elif _type == 'STOP_LOSS_LIMIT': # STOP LIMIT TYPE ORDER 
 
                 _row_sl_2   =   f"Type: Stop-Limit"
-                _row_sl_6   =   f"Price: {_dict.get('price')}"                    
-                _row_sl_7   =   f"Stop: {_dict.get('stopPrice')}"          
-                
-                if _dict.get('orderListId') != -1:                
-                    _row_o_1    =   f"OrderOCOId: {_dict.get('orderListId')}"
+                _row_sl_6   =   f"Price: {_dict_result.get('price')}"
+                _row_sl_7   =   f"Stop: {_dict_result.get('stopPrice')}"
+                _row_o_0    =   f"OrderOCOId: {_orderListId}"  # For OCO Order  
+
+                if _orderListId:
                     _message    =   f"{_row0} {chr(10)}"\
-                                    f"{_row_o_1} {chr(10)}"\
+                                    f"{_row_o_0} {chr(10)}"\
                                     f"{_row1} {chr(10)}"\
                                     f"{_row_sl_2} {chr(10)}"\
                                     f"{_row3} {chr(10)}"\
@@ -1230,7 +1193,7 @@ class BinanceAPIClass:
                                     f"{_row5} {chr(10)}"\
                                     f"{_row_sl_6} {chr(10)}"\
                                     f"{_row_sl_7}"
-                else:                                    
+                else:
                     _message    =   f"{_row0} {chr(10)}"\
                                     f"{_row1} {chr(10)}"\
                                     f"{_row_sl_2} {chr(10)}"\
@@ -1239,110 +1202,131 @@ class BinanceAPIClass:
                                     f"{_row5} {chr(10)}"\
                                     f"{_row_sl_6} {chr(10)}"\
                                     f"{_row_sl_7}"
+
             else:
-                
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_format_open_orders_result',_inputs,'_type_result unknown ')}")
+
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_format_open_orders_result',_inputs,_type+' _type unknown ')}")
                 return(self.response_tuple)
-            
+
             # Add Message on List
-            _list_result.append(_message) 
+            _list_output.append(_message)
         
-        self.response_tuple = ('OK', _list_result)
-            
+        # Output
+        self.response_tuple = ('OK', _list_output)
+
         return(self.response_tuple)
 
     # Format Spot Order Result
-    def account_format_create_order_result(self, _result, _cancel = False, _type = None):
-        
-        # Prepare
-        _inputs             = f"{_result}|{_cancel}|{_type}"        
-        getcontext().prec   = 8
-        _type_result        = None
-        _date               = None
-        
-        # Get useful values
-        if _type == 'stop_limit': # --> The type is not written on the output of a STOP_LOSS_LIMIT Order
-            _type_result = 'STOP_LOSS_LIMIT'
-        elif _type == 'oco': # --> The type are 2 on the output of a OCO Order
-            _type_result = 'OCO'
-        else:
-            if _result.get('type'):
-                _type_result = _result.get('type').upper()
-            else:
-                _type_result = 'OCO'
-        
-        if _result.get('transactTime') is not None:
-            _date = utility.timestamp_formatter(_result.get('transactTime'))
+    def account_format_create_order_result(self, p_result, p_cancel = False, p_type = None):
 
-        if _result.get('transactionTime') is not None:
-            _date_oco = utility.timestamp_formatter(_result.get('transactionTime'))             
-                    
-        # If Filled Build Price & Fee
-        _price          = 0
-        _qty            = 0
-        _price_qty      = 0
-        _price_qty_tot  = 0
-        _qty_tot        = 0
-        _price_avg      = 0
-        _fee            = 0
-        _fee_symbol     = None
-                
-        if _result.get('status') == 'FILLED':
-            
-            for _fill in _result.get('fills'):
-            
-                # Get & Trasform & Cumulate
-                if _fill.get('price') is not None:
-                    _price = Decimal(_fill.get('price'))
-                if _fill.get('qty') is not None:
-                    _qty = Decimal(_fill.get('qty'))
-                if _fill.get('commission') is not None:
-                    _fee = _fee + Decimal(_fill.get('commission'))
-                _fee_symbol = _fill.get('commissionAsset')
-            
-                # Calculate
-                _price_qty      = _price * _qty
-                _price_qty_tot  = _price_qty + _price_qty
-                _qty_tot        = _qty + _qty
+        # Prepare
+        _inputs = f"{p_result}|{p_cancel}|{p_type}"
+        _type   = None
+        _date   = None
+        _temp1  = None
+        _temp2  = None
         
-            # Weighted average - Media Ponderata
-            if _price_qty_tot != 0 and _qty_tot != 0:
-                _price_avg = _price_qty_tot / _qty_tot 
+        # Decimal digit
+        getcontext().prec = 8
+
+        # Get&Build Type
+        if p_type == 'stop_limit': # --> The type is not written on the output of a STOP_LOSS_LIMIT Order
+            _type = 'STOP_LOSS_LIMIT'
+        elif p_type == 'oco': # --> The type are 2 on the output of a OCO Order
+            _type = 'OCO'
+        else:
+            if p_result.get('type'):
+                _type = p_result.get('type').upper()
+            else:
+                _type = 'OCO'
+
+        # Get&Format Date
+        if _type == 'OCO':
+            if p_result.get('transactionTime'):
+                _date = utility.timestamp_formatter(p_result.get('transactionTime'))
+        else:
+            if p_result.get('transactTime'):
+                _date = utility.timestamp_formatter(p_result.get('transactTime'))
+
+        # If Filled Build Price & Fee
+        if p_result.get('status') == 'FILLED':
+
+            # Prepare
+            _price          = 0
+            _qty            = 0
+            _price_qty      = 0
+            _price_qty_tot  = 0
+            _qty_tot        = 0
+            _price_avg      = 0
+            _fee            = 0
+            _fill           = None
+            _fee_symbol     = None
+            
+            try:
+                
+                for _fill in p_result.get('fills'):
+                    
+                    # Get & Trasform & Cumulate
+                    if _fill.get('price'):
+                        _price = Decimal(_fill.get('price'))
+                    if _fill.get('qty'):
+                        _qty = Decimal(_fill.get('qty'))
+                    if _fill.get('commission'):
+                        _fee = _fee + Decimal(_fill.get('commission'))
+                        
+                    _fee_symbol = _fill.get('commissionAsset')
+    
+                    # Calculate
+                    _price_qty      = _price * _qty
+                    _price_qty_tot  = _price_qty + _price_qty
+                    _qty_tot        = _qty + _qty
+    
+                # Weighted average - Media Ponderata
+                if _price_qty_tot != 0 and _qty_tot != 0:
+                    _price_avg = _price_qty_tot / _qty_tot
+
+            except:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_format_create_order_result',_inputs,traceback.format_exc())}")
+                return(self.response_tuple)
 
         # Common
         _row1   = f"Date: {_date}"
-        _row2   = f"Status: {_result.get('status')}"        
-        _row3   = f"Order Id: {_result.get('orderId')}"              
-        _row5   = f"Symbol: {_result.get('symbol')}"
-        _row6   = f"Side: {_result.get('side')}"         
+        _row2   = f"Status: {p_result.get('status')}"
+        _row3   = f"Order Id: {p_result.get('orderId')}"
+        _row5   = f"Symbol: {p_result.get('symbol')}"
+        _row6   = f"Side: {p_result.get('side')}"
 
         # Build Output
-        if _type_result == 'MARKET': # Market Type Order
-            
+        if _type == 'MARKET': # MARKET ORDER TYPE  
+
             # Build Rows
-            if _result.get('side').upper() == 'BUY':
+            if p_result.get('side').upper() == 'BUY':
                 _temp1 = "Quantity Buyed"
                 _temp2 = "Cost"
-            elif _result.get('side').upper() == 'SELL':
+            elif p_result.get('side').upper() == 'SELL':
                 _temp1 = "Quantity Sold"
                 _temp2 = "Revenue"
             else:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_format_create_order_result',_inputs,'Side unknown')}")
                 return(self.response_tuple)
 
-            _row_m_4 = f"Type: Market"         
+            _row_m_4 = f"Type: Market"
             _row_m_7 = f"Price: {_price_avg}"
             _row_m_8 = f"Fee paid in {_fee_symbol}: {_fee}"
-
-            if _result.get('executedQty') is not None:
-                _row_m_9    = f"{_temp1}: {Decimal(_result.get('executedQty'))}"
-            else:
-                _row_m_9    = f"{_temp1}: {_result.get('executedQty')}"
-            if _result.get('cummulativeQuoteQty') is not None:
-                _row_m_10   = f"{_temp2}: {Decimal(_result.get('cummulativeQuoteQty'))}"            
-            else:
-                _row_m_10   = f"{_temp2}: {_result.get('cummulativeQuoteQty')}"
             
+            try:
+                if p_result.get('executedQty'):
+                    _row_m_9    = f"{_temp1}: {Decimal(p_result.get('executedQty'))}"
+                else:
+                    _row_m_9    = f"{_temp1}: {p_result.get('executedQty')}"
+                if p_result.get('cummulativeQuoteQty'):
+                    _row_m_10   = f"{_temp2}: {Decimal(p_result.get('cummulativeQuoteQty'))}"
+                else:
+                    _row_m_10   = f"{_temp2}: {p_result.get('cummulativeQuoteQty')}"
+            except:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_format_create_order_result',_inputs,traceback.format_exc())}")
+                return(self.response_tuple)
+                
             # Build Message
             _message =  f"{_row1} {chr(10)}"\
                         f"{_row2} {chr(10)}"\
@@ -1355,15 +1339,15 @@ class BinanceAPIClass:
                         f"{_row_m_9} {chr(10)}"\
                         f"{_row_m_10}"
 
-        elif _type_result == 'LIMIT': # Limit Type Order
-            
+        elif _type == 'LIMIT': # LIMIT ORDER TYPE 
+
             # Build Rows            
-            _row_l_4 = f"Type: Limit"                      
-            _row_l_7 = f"Limit: {_result.get('price')}"
-            _row_l_8 = f"Quantity: {_result.get('origQty')}"
-            
+            _row_l_4 = f"Type: Limit"
+            _row_l_7 = f"Limit: {p_result.get('price')}"
+            _row_l_8 = f"Quantity: {p_result.get('origQty')}"
+
             # Build Message
-            if not _cancel:
+            if not p_cancel:
                 _message =  f"{_row1} {chr(10)}"\
                             f"{_row2} {chr(10)}"\
                             f"{_row3} {chr(10)}"\
@@ -1381,29 +1365,29 @@ class BinanceAPIClass:
                             f"{_row_l_7} {chr(10)}"\
                             f"{_row_l_8}"
 
-        elif _type_result == 'STOP_LOSS_LIMIT': # Stop Limit Type Order
-            
+        elif _type == 'STOP_LOSS_LIMIT': # STOP LIMIT ORDER TYPE  
+
             """
-            L'output di uno Stop-Limit è molto povero.. per questo mostro molto poco.
-            Esempio di output: {'symbol': 'BTCUSDT', 'orderId': 2786196182, 'orderListId': -1, 'clientOrderId': 'p0qTfCHG0tAxFoivBqqI72', 'transactTime': 1596104181799}
+            The output of a Stop-Limit is very poor .. for this I show very little.
+            Example of output: {'symbol': 'BTCUSDT', 'orderId': 2786196182, 'orderListId': -1, 'clientOrderId': 'p0qTfCHG0tAxFoivBqqI72', 'transactTime': 1596104181799}
             """
-            
+
             # Build Rows
-            _row_sl_2   =   f"Status: NEW"           
+            _row_sl_2   =   f"Status: NEW"
             _row_sl_4   =   f"Type: Stop-Limit"
-            
+
             # Build Message
 
-            if not _cancel:
+            if not p_cancel:
                 _message    =   f"{_row1} {chr(10)}"\
                                 f"{_row_sl_2} {chr(10)}"\
                                 f"{_row3} {chr(10)}"\
                                 f"{_row_sl_4} {chr(10)}"\
                                 f"{_row5}"
             else:
-                _row_sl_7   =   f"Stop: {_result.get('stopPrice')}"                                                             
-                _row_sl_8   =   f"Limit: {_result.get('price')}"
-                _row_sl_9   =   f"Quantity: {_result.get('origQty')}"                
+                _row_sl_7   =   f"Stop: {p_result.get('stopPrice')}"
+                _row_sl_8   =   f"Limit: {p_result.get('price')}"
+                _row_sl_9   =   f"Quantity: {p_result.get('origQty')}"
                 _message    =   f"{_row2} {chr(10)}"\
                                 f"{_row3} {chr(10)}"\
                                 f"{_row_sl_4} {chr(10)}"\
@@ -1412,30 +1396,30 @@ class BinanceAPIClass:
                                 f"{_row_sl_7} {chr(10)}"\
                                 f"{_row_sl_8} {chr(10)}"\
                                 f"{_row_sl_9}"
-            
-        elif _type_result == 'OCO': # OCO Order Type: Stop-Limit + Limit
-            
+
+        elif _type == 'OCO': # OCO ORDER TYPE: Stop-Limit + Limit 
+
             # Build Rows
             _title0     = ">> Order OCO <<"
-            _row_o_1    = f"Date: {_date_oco}"
-            _row_o_2    = f"Order Id: {_result.get('orderListId')}"
-            _row_o_3    = f"Symbol: {_result.get('symbol')}"
-            _row_o_4    = f"Side: {_result.get('orderReports')[0].get('side')}" 
-            _row_o_5    = f"Quantity: {_result.get('orderReports')[0].get('origQty')}"
-                
+            _row_o_1    = _row1
+            _row_o_2    = f"Order Id: {p_result.get('orderListId')}"
+            _row_o_3    = f"Symbol: {p_result.get('symbol')}"
+            _row_o_4    = f"Side: {p_result.get('orderReports')[0].get('side')}"
+            _row_o_5    = f"Quantity: {p_result.get('orderReports')[0].get('origQty')}"
+
             _title1     = "> Stop Limit"
-            _row_o_6    = f"Status: {_result.get('orderReports')[0].get('status')}"
-            _row_o_7    = f"Order Id: {_result.get('orderReports')[0].get('orderId')}"
-            _row_o_8    = f"Type: {_result.get('orderReports')[0].get('type')}"       
-            _row_o_9    = f"Stop: {_result.get('orderReports')[0].get('stopPrice')}"
-            _row_o_10   = f"Limit: {_result.get('orderReports')[0].get('price')}"
-            
+            _row_o_6    = f"Status: {p_result.get('orderReports')[0].get('status')}"
+            _row_o_7    = f"Order Id: {p_result.get('orderReports')[0].get('orderId')}"
+            _row_o_8    = f"Type: {p_result.get('orderReports')[0].get('type')}"
+            _row_o_9    = f"Stop: {p_result.get('orderReports')[0].get('stopPrice')}"
+            _row_o_10   = f"Limit: {p_result.get('orderReports')[0].get('price')}"
+
             _title2     = "> Limit"
-            _row_o_11   = f"Status: {_result.get('orderReports')[1].get('status')}"
-            _row_o_12   = f"Order Id: {_result.get('orderReports')[1].get('orderId')}"
-            _row_o_13   = f"Type: {_result.get('orderReports')[1].get('type')}"
-            _row_o_14   = f"Limit: {_result.get('orderReports')[1].get('price')}"
-            
+            _row_o_11   = f"Status: {p_result.get('orderReports')[1].get('status')}"
+            _row_o_12   = f"Order Id: {p_result.get('orderReports')[1].get('orderId')}"
+            _row_o_13   = f"Type: {p_result.get('orderReports')[1].get('type')}"
+            _row_o_14   = f"Limit: {p_result.get('orderReports')[1].get('price')}"
+
             # Build Message                                
             _message =  f"{_title0} {chr(10)}"\
                         f"{_row_o_1} {chr(10)}"\
@@ -1454,15 +1438,15 @@ class BinanceAPIClass:
                         f"{_row_o_12} {chr(10)}"\
                         f"{_row_o_13} {chr(10)}"\
                         f"{_row_o_14}"
-                        
+
         else:
-            
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_format_create_order_result',_inputs,'_type_result unknown')}")
+
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_format_create_order_result',_inputs,_type+' _type unknown')}")
             return(self.response_tuple)
-        
-        
+
+        # Output
         self.response_tuple = ('OK', _message)
-        
+
         return(self.response_tuple)
 
 
@@ -1471,56 +1455,59 @@ class BinanceAPIClass:
     """""""""""""""""""""""""""
 
     """ ORDER """
-   
+
     # Convert Spot Dust to BNB
-    def spot_convert_dust2bnb(self, _symbol_input):
+    def spot_convert_dust2bnb(self, p_symbol_input):
 
         # Prepare
-        _inputs             = f"{_symbol_input}"
+        _inputs             = f"{p_symbol_input}"
         _result_raw         = None
         _result_nice        = None
         _transfer_result    = None
-        _symbol_input_clean = _symbol_input.upper()
+        _symbol_input_clean = None
         _tot_gross          = 0
         _fee                = 0
         _tot_net            = 0
         _asset_qta          = 0
-        
+
         try:
-            _result_raw = self.client[1].transfer_dust(asset=_symbol_input_clean)
-            
+            _symbol_input_clean = p_symbol_input.upper()
+            _result_raw = self.client.transfer_dust(asset=_symbol_input_clean)
+
         except BinanceAPIException as e:
-            
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
             return(self.response_tuple)
-            
         except:
-            
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','spot_convert_dust2bnb',_inputs,traceback.format_exc(2))}")
             return(self.response_tuple)
         
-        if _result_raw is not None:
+        # Format
+        if _result_raw:
             
-            _tot_gross  = Decimal(_result_raw.get('totalTransfered'))
-            _fee        = Decimal(_result_raw.get('totalServiceCharge'))
-            _tot_net    = _tot_gross - _fee
-            
-            for _transfer_result in _result_raw.get('transferResult'):
-                if _transfer_result is not None:
-                    _asset_qta  = _asset_qta + Decimal(_transfer_result.get('amount'))
-            
+            try:
+                _tot_gross  = Decimal(_result_raw.get('totalTransfered'))
+                _fee        = Decimal(_result_raw.get('totalServiceCharge'))
+                _tot_net    = _tot_gross - _fee
+    
+                for _transfer_result in _result_raw.get('transferResult'):
+                    if _transfer_result:
+                        _asset_qta  = _asset_qta + Decimal(_transfer_result.get('amount'))
+            except:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','spot_convert_dust2bnb',_inputs,traceback.format_exc(2))}")
+                return(self.response_tuple)
+
             _result_nice  = f"Dust Asset: {_symbol_input_clean} {chr(10)}"\
                             f"Dust Qta  : {_asset_qta} {chr(10)}"\
                             f"--------{chr(10)}"\
                             f"BNB Gross: {_tot_gross} {chr(10)}"\
                             f"BNB Fee  : {_fee}{chr(10)}"\
-                            f"BNB Net  : {_tot_net} {chr(10)}"        
-        
+                            f"BNB Net  : {_tot_net} {chr(10)}"
+
             self.response_tuple = ('OK', _result_nice)
-        
+
         else:
-            
+
             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','spot_convert_dust2bnb',_inputs,'_result_raw is None')}")
-                   
+
         return(self.response_tuple)
