@@ -1104,6 +1104,68 @@ class BinanceAPI:
 
         return(self.response_tuple)
 
+    # Convert Dust to BNB
+    def account_convert_dust2bnb(self, p_symbol_input):
+
+        # Prepare
+        _inputs             = f"{self.wallet}|{p_symbol_input}"
+        _result_raw         = None
+        _result_nice        = None
+        _transfer_result    = None
+        _symbol_input_clean = None
+        _tot_gross          = 0
+        _fee                = 0
+        _tot_net            = 0
+        _asset_qta          = 0
+        
+        # Check if wallet is Margin
+        if self.wallet == 'margin':
+            self.response_tuple = ('NOK', f"{ utility.my_log('Error','account_convert_dust2bnb',_inputs,'no margin convert 2 bnb exist')}")
+            return(self.response_tuple)
+        
+        # Work
+        try:
+            _symbol_input_clean = p_symbol_input.upper()
+            _result_raw = self.client.transfer_dust(asset=_symbol_input_clean)
+
+        except BinanceAPIException as e:
+            _error = str(e).split(":")[1]
+            self.response_tuple = ('NOK',  _error)
+            return(self.response_tuple)
+        except:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_convert_dust2bnb',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+        
+        # Format
+        if _result_raw:
+            
+            try:
+                _tot_gross  = Decimal(_result_raw.get('totalTransfered'))
+                _fee        = Decimal(_result_raw.get('totalServiceCharge'))
+                _tot_net    = _tot_gross - _fee
+    
+                for _transfer_result in _result_raw.get('transferResult'):
+                    if _transfer_result:
+                        _asset_qta  = _asset_qta + Decimal(_transfer_result.get('amount'))
+            except:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_convert_dust2bnb',_inputs,traceback.format_exc(2))}")
+                return(self.response_tuple)
+
+            _result_nice  = f"Dust Asset: {_symbol_input_clean} {chr(10)}"\
+                            f"Dust Qta  : {_asset_qta} {chr(10)}"\
+                            f"--------{chr(10)}"\
+                            f"BNB Gross: {_tot_gross} {chr(10)}"\
+                            f"BNB Fee  : {_fee}{chr(10)}"\
+                            f"BNB Net  : {_tot_net} {chr(10)}"
+
+            self.response_tuple = ('OK', _result_nice)
+
+        else:
+
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','spot_convert_dust2bnb',_inputs,'_result_raw is None')}")
+
+        return(self.response_tuple)
+
 
     """ FORMAT BINANCE RESULT """
 
@@ -1446,68 +1508,5 @@ class BinanceAPI:
 
         # Output
         self.response_tuple = ('OK', _message)
-
-        return(self.response_tuple)
-
-
-    """""""""""""""""""""""""""
-    ACCOUNT ENDPOINTS (SPOT) 
-    """""""""""""""""""""""""""
-
-    """ ORDER """
-
-    # Convert Spot Dust to BNB
-    def spot_convert_dust2bnb(self, p_symbol_input):
-
-        # Prepare
-        _inputs             = f"{p_symbol_input}"
-        _result_raw         = None
-        _result_nice        = None
-        _transfer_result    = None
-        _symbol_input_clean = None
-        _tot_gross          = 0
-        _fee                = 0
-        _tot_net            = 0
-        _asset_qta          = 0
-
-        try:
-            _symbol_input_clean = p_symbol_input.upper()
-            _result_raw = self.client.transfer_dust(asset=_symbol_input_clean)
-
-        except BinanceAPIException as e:
-            _error = str(e).split(":")[1]
-            self.response_tuple = ('NOK',  _error)
-            return(self.response_tuple)
-        except:
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','spot_convert_dust2bnb',_inputs,traceback.format_exc(2))}")
-            return(self.response_tuple)
-        
-        # Format
-        if _result_raw:
-            
-            try:
-                _tot_gross  = Decimal(_result_raw.get('totalTransfered'))
-                _fee        = Decimal(_result_raw.get('totalServiceCharge'))
-                _tot_net    = _tot_gross - _fee
-    
-                for _transfer_result in _result_raw.get('transferResult'):
-                    if _transfer_result:
-                        _asset_qta  = _asset_qta + Decimal(_transfer_result.get('amount'))
-            except:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','spot_convert_dust2bnb',_inputs,traceback.format_exc(2))}")
-                return(self.response_tuple)
-
-            _result_nice  = f"Dust Asset: {_symbol_input_clean} {chr(10)}"\
-                            f"Dust Qta  : {_asset_qta} {chr(10)}"\
-                            f"--------{chr(10)}"\
-                            f"BNB Gross: {_tot_gross} {chr(10)}"\
-                            f"BNB Fee  : {_fee}{chr(10)}"\
-                            f"BNB Net  : {_tot_net} {chr(10)}"
-
-            self.response_tuple = ('OK', _result_nice)
-
-        else:
-
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','spot_convert_dust2bnb',_inputs,'_result_raw is None')}")
 
         return(self.response_tuple)
