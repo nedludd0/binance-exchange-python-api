@@ -113,7 +113,7 @@ def run(choose, symbol):
 
         if _binance_obj.check_client_build_ok():    
                     
-            _out = _binance_obj.spot_convert_dust2bnb(_symbol)
+            _out = _binance_obj.account_convert_dust2bnb(_symbol)
     
             if _out[0] == 'OK':
                 print(f"{chr(10)}------------")
