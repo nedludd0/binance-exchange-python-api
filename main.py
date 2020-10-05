@@ -77,7 +77,7 @@ def run(choose, symbol):
 
         if _binance_obj.check_client_build_ok():    
                     
-            _out = _binance_obj.general_test_connectivity()
+            _out = _binance_obj.general_get_system_status()
     
             if _out[0] == 'OK':
                 print(f"{chr(10)}------------")

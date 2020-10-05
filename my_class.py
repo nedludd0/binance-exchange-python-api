@@ -195,19 +195,24 @@ class BinanceAPI:
 
         return(self.response_tuple)
 
-    # Test connectivity to the Rest API getting the current server time.
-    def general_test_connectivity(self):
+    # Get system status detail
+    def general_get_system_status(self):
 
         # Prepare
-        _inputs         = None        
-        _output         = {}
-        _server_time    = None
+        _inputs = None        
+        _status = None
+        _output = None
 
         try:
-            _output = self.client.get_server_time()
-            if len(_output) != 0:
-                _server_time = utility.timestamp_formatter(_output.get('serverTime'))
-            self.response_tuple = ('OK', _server_time)
+            _output = self.client.get_system_status()
+            if _output:
+                if not _output.get('status'):
+                    _status = 'System Normal'
+                else:
+                    _status = 'System Maintenance'
+                self.response_tuple = ('OK', _status)
+            else:
+                self.response_tuple = ('OK', 'System Maintenance')
         except BinanceAPIException as e:
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
