@@ -398,9 +398,9 @@ class BinanceAPI:
         return(self.response_tuple)
 
 
-    """""""""""""""""""""""""""""""""
-    ACCOUNT ENDPOINTS (SPOT + MARGIN)
-    """""""""""""""""""""""""""""""""
+    """""""""""""""""""""""""""""""""""""""""""""
+    ACCOUNT ENDPOINTS (SPOT + MARGIN + FUTURES)
+    """""""""""""""""""""""""""""""""""""""""""""
 
     """ GENERIC """
 
@@ -589,13 +589,14 @@ class BinanceAPI:
 
         return(self.response_tuple)
 
-    # Get Account Balance Asset Free  --> spot + margin
+    # Get Account Balance Asset Free  --> spot + margin + futures
     def account_get_balance_asset_free(self, p_symbol):
 
         # Prepare 
-        _inputs                 = f"{self.wallet}|{p_symbol}"        
-        _asset_balance_response = None
-        _bal_decimal            = None
+        _inputs                     = f"{self.wallet}|{p_symbol}"        
+        _asset_balance_response     = None
+        _assets_balance_response    = None
+        _bal_decimal                = None
 
         try:
 
@@ -629,6 +630,23 @@ class BinanceAPI:
                         else:
                             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs,p_symbol+' not found')}")
                             continue
+
+            elif self.wallet == 'futures':
+
+                _assets_balance_response = self.account_get_balance_total()
+                if _assets_balance_response[0] == 'OK':
+                    for _asset_balance_response in _assets_balance_response[1]:
+                        if _asset_balance_response.get('asset') == p_symbol.upper(): 
+                            if _asset_balance_response.get('free'):
+                                _bal_decimal = Decimal(_asset_balance_response.get('free'))
+                                self.response_tuple = ('OK', _bal_decimal)
+                                break
+                            else:
+                                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs,'_asset_balance_response.get(free) is None')}")
+                        else:
+                            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs, p_symbol.upper()+' not found')}")
+                else:
+                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs,_assets_balance_response[1])}")
 
         except BinanceAPIException as e:
             _error = str(e).split(":")[1]

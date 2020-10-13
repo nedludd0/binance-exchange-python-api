@@ -667,6 +667,32 @@ def run(choose, symbol):
         
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
+        _wallet = 'futures'
+    
+        _binance_obj = BinanceAPI(p_api_pub_key = api_key, p_api_secret_key = api_sec, p_wallet = _wallet)
+        
+        if _binance_obj.check_client_build_ok():
+
+            _out = _binance_obj.account_get_balance_asset_free('BNB')
+    
+            if _out[0] == 'OK':
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")          
+                print(f"Tot Free: {_out[1]:.8f}")
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")
+            
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.get_client_msg_nok()}")
+
+
 
 if __name__ == "__main__":
     
