@@ -28,3 +28,8 @@ Both Spot and Margin Normal supported
 - submitting of **stop limit orders**
 - see open orders
 - cancel open orders
+
+# Wallet Futures
+- see open orders
+- cancel open orders
+- see open positions
