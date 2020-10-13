@@ -79,7 +79,7 @@ class BinanceAPI:
 
         # Prepare
         _inputs             = f"{p_qta_start}|{p_step_size}"
-        _digits_decimal     = None
+        _digits_int         = None
         _qta_start_decimal  = None
         _qta_end            = None
 
@@ -95,14 +95,14 @@ class BinanceAPI:
 
         # Calculate Digits 4 Round
         try:
-            _digits_decimal = int( round( -math.log(p_step_size, 10) , 0 ) )
+            _digits_int = int( round( -math.log(Decimal(p_step_size), 10) , 0 ) )
         except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','truncate_by_step_size',_inputs,traceback.format_exc(2))}")
             return(self.response_tuple)
 
         # Calculate Tot End
         try:
-            _qta_end = round( _qta_start_decimal , _digits_decimal )
+            _qta_end = Decimal(round( _qta_start_decimal , _digits_int ))
             self.response_tuple = ('OK',_qta_end)
         except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','truncate_by_step_size',_inputs,traceback.format_exc(2))}")
@@ -217,7 +217,7 @@ class BinanceAPI:
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
         except Exception:
-            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_test_connectivity',_inputs,traceback.format_exc(2))}")
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_system_status',_inputs,traceback.format_exc(2))}")
 
         return(self.response_tuple)
 
@@ -301,7 +301,7 @@ class BinanceAPI:
 
         # Prepare
         _inputs             = None        
-        _fee                = None
+        _fee_decimal        = None
         _trade_fee_response = None
         _symbol_exists      = None
         _trade_fee          = {}
@@ -334,8 +334,8 @@ class BinanceAPI:
                         for t in _trade_fee:
                             if t.get('symbol') == _symbol_work:
                                 try:
-                                    _fee = Decimal(t.get(p_what_fee))
-                                    self.response_tuple = ('OK', _fee)
+                                    _fee_decimal = Decimal(t.get(p_what_fee))
+                                    self.response_tuple = ('OK', _fee_decimal)
                                 except Exception:
                                     self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_fee_cost',_inputs,traceback.format_exc(2))}")
                                     return(self.response_tuple)
@@ -359,7 +359,7 @@ class BinanceAPI:
 
         # Prepare
         _inputs             = None           
-        _price              = None
+        _price_decimal      = None
         _avg_price_response = None
         _symbol_exists      = None
         _symbol_work        = None
@@ -384,8 +384,8 @@ class BinanceAPI:
 
             _avg_price_response = self.client.get_avg_price(symbol=_symbol_work)
             if _avg_price_response:
-                _price = Decimal(_avg_price_response.get('price'))
-                self.response_tuple = ('OK', _price)
+                _price_decimal = Decimal(_avg_price_response.get('price'))
+                self.response_tuple = ('OK', _price_decimal)
             else:
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_avg_price',_inputs,'_avg_price_response is None')}")
 
@@ -480,8 +480,8 @@ class BinanceAPI:
                             # Tot Btc
                             _avg_price_temp = self.general_get_symbol_avg_price('BTCUSDT')
                             if _avg_price_temp[0] == 'OK':
-                                _tot_btc_free   = _tot_btc_free + _my_asset.get('free') / _avg_price_temp[1]
-                                _tot_btc_locked = _tot_btc_locked + _my_asset.get('locked') / _avg_price_temp[1]
+                                _tot_btc_free   = _tot_btc_free + (_my_asset.get('free') / _avg_price_temp[1])
+                                _tot_btc_locked = _tot_btc_locked + (_my_asset.get('locked') / _avg_price_temp[1])
                             else:
                                 self.response_tuple = ('NOK', _avg_price_temp[1])
                             
@@ -495,8 +495,8 @@ class BinanceAPI:
                             # Tot Btc
                             _avg_price_temp = self.general_get_symbol_avg_price('BTCBUSD')
                             if _avg_price_temp[0] == 'OK':
-                                _tot_btc_free   = _tot_btc_free + _my_asset.get('free') / _avg_price_temp[1]
-                                _tot_btc_locked = _tot_btc_locked + _my_asset.get('locked') / _avg_price_temp[1]
+                                _tot_btc_free   = _tot_btc_free + (_my_asset.get('free') / _avg_price_temp[1])
+                                _tot_btc_locked = _tot_btc_locked + (_my_asset.get('locked') / _avg_price_temp[1])
                             else:
                                 self.response_tuple = ('NOK', _avg_price_temp[1])
                             
@@ -522,8 +522,8 @@ class BinanceAPI:
                             # Tot Usd    
                             _avg_price_temp_usdt = self.general_get_symbol_avg_price(_symbol_temp_usdt)
                             if _avg_price_temp_usdt[0] == 'OK':
-                                _tot_usd_free      = _tot_usd_free + _avg_price_temp_usdt[1] * _my_asset.get('free')
-                                _tot_usd_locked    = _tot_usd_locked + _avg_price_temp_usdt[1] * _my_asset.get('locked')
+                                _tot_usd_free      = _tot_usd_free + (_avg_price_temp_usdt[1] * _my_asset.get('free'))
+                                _tot_usd_locked    = _tot_usd_locked + (_avg_price_temp_usdt[1] * _my_asset.get('locked'))
                             else:
                                 self.response_tuple = ('NOK',  _avg_price_temp_usdt[1])
                                     
@@ -559,7 +559,7 @@ class BinanceAPI:
         # Prepare 
         _inputs                 = f"{self.wallet}|{p_symbol}"        
         _asset_balance_response = None
-        _bal                    = None
+        _bal_decimal            = None
 
         try:
 
@@ -568,8 +568,8 @@ class BinanceAPI:
                 _asset_balance_response = self.client.get_asset_balance(asset=p_symbol)
                 if _asset_balance_response:
                     if _asset_balance_response.get('free'):
-                        _bal = Decimal(_asset_balance_response.get('free'))
-                        self.response_tuple = ('OK', _bal)
+                        _bal_decimal = Decimal(_asset_balance_response.get('free'))
+                        self.response_tuple = ('OK', _bal_decimal)
                     else:
                         self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs,'_asset_balance_response.get(free) is None')}")
                 else:
@@ -587,8 +587,8 @@ class BinanceAPI:
                     for _what_find in _account_info[_what_finds]: # For every Balances
 
                         if _what_find.get('asset') == p_symbol.upper():
-                            _bal = Decimal(_what_find.get('free'))
-                            self.response_tuple = ('OK',  _bal)
+                            _bal_decimal = Decimal(_what_find.get('free'))
+                            self.response_tuple = ('OK',  _bal_decimal)
                             break
                         else:
                             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_asset_free',_inputs,p_symbol+' not found')}")
@@ -642,7 +642,9 @@ class BinanceAPI:
             # Symbol Bal Second TOT Estimated Asset Balance
             _symbol_bal_second_tot_estimated = self.account_get_balance_total()
             if _symbol_bal_second_tot_estimated[0] == 'OK':
-                quantity_pre_size_applied = _symbol_bal_second_tot_estimated[1][0].get('totals').get(f"tot_{self.symbol_second.lower()}")                
+                pass
+                # DA RIVEVEDERE PERCHÈ CON SELF.SYMBOL_SECOND = USDT NON FUNZIONEREBBE
+                #quantity_pre_size_applied = _symbol_bal_second_tot_estimated[1][0].get('totals').get(f"tot_{self.symbol_second.lower()}")                
             else:
                 self.response_tuple = ('NOK', _symbol_bal_second_tot_estimated[1])
                 return(self.response_tuple)
@@ -653,14 +655,79 @@ class BinanceAPI:
             quantity_pre_size_applied = _symbol_bal_second_free[1]
 
         """ Build bal to use & size """
+        # I break down the formula quantity_post_size_applied = round(Decimal(quantity_pre_size_applied) / Decimal(100) *  Decimal(p_size), 5)
+        # into elementary steps
+
+        # Default Value
+        _p_size_str = None
+        _p_size_decimal = None
+        _quantity_pre_size_applied_decimal = None
+        _100_int = 100
+        _100_str = None
+        _100_decimal = None
+        _division = None
+        _multiplication = None        
+        _inputs_temp = None
+        
+        # Prepare p_size ( str -> decimal )
+        _p_size_str = str(p_size)
         try:
-            quantity_post_size_applied = round( quantity_pre_size_applied / 100 *  Decimal(p_size) , 5 )
-            # Stop Qta to BUY TO Real Free Qta
-            if quantity_post_size_applied > _symbol_bal_second_free[1]:
-                quantity_post_size_applied = _symbol_bal_second_free[1]            
+            _p_size_decimal = Decimal(_p_size_str)
         except Exception:
+            _inputs_temp = f"||{type(p_size)},{p_size}|{type(_p_size_str)},{_p_size_str}|{type(_p_size_decimal)},{_p_size_decimal}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Prepare 100 ( str -> decimal )
+        _100_str = str(_100_int)
+        try:
+            _100_decimal = Decimal(_100_str)
+        except Exception:
+            _inputs_temp = f"||{type(_100_int)},{_100_int}|{type(_100_str)},{_100_str}|{type(_100_decimal)},{_100_decimal}"            
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Prepare quantity_pre_size_applied
+        try:            
+            _quantity_pre_size_applied_decimal = Decimal(quantity_pre_size_applied)
+        except Exception:
+            _inputs_temp = f"||{type(quantity_pre_size_applied)},{quantity_pre_size_applied}|{type(_quantity_pre_size_applied_decimal)},{_quantity_pre_size_applied_decimal}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Operate Division
+        try:
+            _division = _quantity_pre_size_applied_decimal / _100_decimal
+        except Exception:
+            _inputs_temp = f"||{type(_100_decimal)},{_100_decimal}|{type(_quantity_pre_size_applied_decimal)},{_quantity_pre_size_applied_decimal}|{type(_division)},{_division}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+        
+        # Operate Multiplication
+        try:                 
+            _multiplication = _division * _p_size_decimal
+        except Exception:
+            _inputs_temp = f"||{type(_p_size_decimal)},{_p_size_decimal}|{type(_division)},{_division}|{type(_multiplication)},{_multiplication}"
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs,traceback.format_exc(2))}")
             return(self.response_tuple)
+        
+        # Operate Round
+        try:             
+            quantity_post_size_applied = round(_multiplication, 5)
+        except Exception:
+            _inputs_temp = f"||{type(_multiplication)},{_multiplication}|{type(quantity_post_size_applied)},{quantity_post_size_applied}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Stop Qta to BUY TO Real Free Qta
+        try:               
+            if quantity_post_size_applied > _symbol_bal_second_free[1]:
+                quantity_post_size_applied = _symbol_bal_second_free[1]
+        except Exception:
+            _inputs_temp = f"||{type(_symbol_bal_second_free[1])},{_symbol_bal_second_free[1]}|{type(quantity_post_size_applied)},{quantity_post_size_applied}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+                                                
 
         """ Get Symbol Filter LOT_SIZE """
         _symbol_lot_size = self.general_get_symbol_info_filter('LOT_SIZE')
@@ -707,7 +774,7 @@ class BinanceAPI:
         
         # Fee % Applied
         try:
-            _symbol_fee_perc                = (100 - _symbol_fee_value) / 100
+            _symbol_fee_perc                = (Decimal(100) - _symbol_fee_value) / Decimal(100)
             quantity_pre_stepSize_applied   = (quantity_post_size_applied / _symbol_price_value) * _symbol_fee_perc
         except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_buy',_inputs,traceback.format_exc(2))}")
@@ -772,13 +839,79 @@ class BinanceAPI:
 
         """ Build bal to use & size """
         quantity_pre_size_applied = _symbol_bal_first_free[1]
+
+
+        # I break down the formula quantity_post_size_applied = round(Decimal(quantity_pre_size_applied) / Decimal(100) *  Decimal(p_size), 5)
+        # into elementary steps
+
+        # Default Value
+        _p_size_str = None
+        _p_size_decimal = None
+        _quantity_pre_size_applied_decimal = None
+        _100_int = 100
+        _100_str = None
+        _100_decimal = None
+        _division = None
+        _multiplication = None        
+        _inputs_temp = None      
+
+        # Prepare p_size ( str -> decimal )
+        _p_size_str = str(p_size)
         try:
-            quantity_post_size_applied  = quantity_pre_size_applied / 100 *  Decimal(p_size)
-            # Stop Qta to SELL TO Real Free Qta
-            if quantity_post_size_applied > _symbol_bal_first_free[1]:
-                quantity_post_size_applied = _symbol_bal_first_free[1]            
+            _p_size_decimal = Decimal(_p_size_str)
         except Exception:
+            _inputs_temp = f"||{type(p_size)},{p_size}|{type(_p_size_str)},{_p_size_str}|{type(_p_size_decimal)},{_p_size_decimal}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Prepare 100 ( str -> decimal )
+        _100_str = str(_100_int)
+        try:
+            _100_decimal = Decimal(_100_str)
+        except Exception:
+            _inputs_temp = f"||{type(_100_int)},{_100_int}|{type(_100_str)},{_100_str}|{type(_100_decimal)},{_100_decimal}"            
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Prepare quantity_pre_size_applied
+        try:            
+            _quantity_pre_size_applied_decimal = Decimal(quantity_pre_size_applied)
+        except Exception:
+            _inputs_temp = f"||{type(quantity_pre_size_applied)},{quantity_pre_size_applied}|{type(_quantity_pre_size_applied_decimal)},{_quantity_pre_size_applied_decimal}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Operate Division
+        try:
+            _division = _quantity_pre_size_applied_decimal / _100_decimal
+        except Exception:
+            _inputs_temp = f"||{type(_100_decimal)},{_100_decimal}|{type(_quantity_pre_size_applied_decimal)},{_quantity_pre_size_applied_decimal}|{type(_division)},{_division}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+        
+        # Operate Multiplication
+        try:                 
+            _multiplication = _division * _p_size_decimal
+        except Exception:
+            _inputs_temp = f"||{type(_p_size_decimal)},{_p_size_decimal}|{type(_division)},{_division}|{type(_multiplication)},{_multiplication}"
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+        
+        # Operate Round
+        try:             
+            quantity_post_size_applied = round(_multiplication, 5)
+        except Exception:
+            _inputs_temp = f"||{type(_multiplication)},{_multiplication}|{type(quantity_post_size_applied)},{quantity_post_size_applied}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs+_inputs_temp,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        # Stop Qta to BUY TO Real Free Qta
+        try:               
+            if quantity_post_size_applied > _symbol_bal_first_free[1]:
+                quantity_post_size_applied = _symbol_bal_first_free[1] 
+        except Exception:
+            _inputs_temp = f"||{type(_symbol_bal_first_free[1])},{_symbol_bal_first_free[1]}|{type(quantity_post_size_applied)},{quantity_post_size_applied}"
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_quantity_to_sell',_inputs+_inputs_temp,traceback.format_exc(2))}")
             return(self.response_tuple)
 
         """ Get Symbol LOT SIZE """

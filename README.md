@@ -11,6 +11,7 @@ Both Spot and Margin Normal supported
 - calculation in % of the quantities to sell
 - calculation in % of the quantities to buy
 - get symbol info
+- get system status
 
 # Wallet Spot
 - submitting of **market orders** 

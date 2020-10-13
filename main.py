@@ -327,8 +327,12 @@ def run(choose, symbol):
         if _binance_obj.check_client_build_ok():
 
             _out = _binance_obj.account_get_balance_total()
-    
+
             if _out[0] == 'OK':
+
+                print(_out[1])
+                """
+
                 print(f"{chr(10)}------------")
                 print(f"-- RESULT --")
                 print(f"------------")          
@@ -341,7 +345,7 @@ def run(choose, symbol):
                 
                 print(f"Tot Estimated BTC: {_out[1][0].get('totals').get('tot_btc')   :.8f}")
                 print(f"Tot Estimated USD: {_out[1][0].get('totals').get('tot_usd')   :.8f}")
-                
+                """
             elif _out[0] == 'NOK':
                 print(f"{chr(10)}-----------")
                 print(f"-- ERROR --")
@@ -496,16 +500,59 @@ def run(choose, symbol):
             print(f"-- ERROR --")
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
+    #### ACCOUNT ENDPOINTS FUTURES ####
+
+    # MyBalance Futures
+    elif choose == 33:
+
+        _wallet = 'futures'
+    
+        _binance_obj = BinanceAPI(p_api_pub_key = api_key, p_api_secret_key = api_sec, p_wallet = _wallet)
+        
+        if _binance_obj.check_client_build_ok():
+
+            _out = _binance_obj.account_get_balance_total()
+    
+            if _out[0] == 'OK':
+                
+                print(_out[1])
+                """
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")          
+                for _dict in _out[1]:
+                    
+                    if _dict.get('asset') is not None:          
+                        print(f"{_dict.get('asset')} free:   {_dict.get('free')     :.8f}")
+                        print(f"{_dict.get('asset')} locked: {_dict.get('locked')   :.8f}")
+                        print("--------")
+                
+                print(f"Tot Estimated BTC: {_out[1][0].get('totals').get('tot_btc')   :.8f}")
+                print(f"Tot Estimated USD: {_out[1][0].get('totals').get('tot_usd')   :.8f}")
+                """
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")
+            
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.get_client_msg_nok()}")
+
+
     else:
         
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
-        
+
 
 if __name__ == "__main__":
     
     
     symbol_first    = 'BTC'
-    symbol_second   = 'USDT'
+    symbol_second   = 'BUSD'
     symbol          = f"{symbol_first}{symbol_second}"    
     
     print(f"{chr(10)}Pair we are working on: {symbol}{chr(10)}")
@@ -526,5 +573,10 @@ if __name__ == "__main__":
                     f"----------------------------------------------------{chr(10)}"\
                     f"Balance               [32] - Make Order        [42] {chr(10)}"\
                     f"Get Open Orders       [52] - Cancel Order      [62] {chr(10)}{chr(10)}"\
+                    f"----------------------------------------------------{chr(10)}"\
+                    f"----------------- ACCOUNT FUTURES ------------------{chr(10)}"\
+                    f"----------------------------------------------------{chr(10)}"\
+                    f"Balance               [33] - Make Order        [xx] {chr(10)}"\
+                    f"Get Open Orders       [xx] - Cancel Order      [xx] {chr(10)}{chr(10)}"\
                     f"CHOOSE Number: ")
     run(int(choose),symbol)
