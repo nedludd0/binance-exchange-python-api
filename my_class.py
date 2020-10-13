@@ -433,9 +433,14 @@ class BinanceAPI:
             if self.wallet == 'spot':
                 _account_info   = self.client.get_account()
                 _what_finds     = "balances"
+                
             elif self.wallet == 'margin':
                 _account_info   = self.client.get_margin_account()
                 _what_finds     = "userAssets"
+                
+            elif self.wallet == 'futures':
+                _account_info   = self.client.futures_account_balance()
+                
                 
             # Get Values from Account Info
             if _what_finds in _account_info:
@@ -543,7 +548,38 @@ class BinanceAPI:
                     self.response_tuple = ('OK', _my_balance)
 
             else:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_total',_inputs,'balances not in _account_info')}")
+                
+                # Furues Wallet
+                if self.wallet == 'futures' and _account_info:
+                    
+                    # For every Asset
+                    for _what_find in _account_info:
+                        
+                         if ( Decimal(_what_find.get('balance')) ) > 0: # Only Asset with something
+                             
+                            """""""""""""""""""""""""""""""""
+                            Build Wallet with List Assets Dict
+                            """""""""""""""""""""""""""""""""
+                            # Build Asset Dict
+                            _my_asset = {   'asset'     : _what_find.get('asset'),
+                                            'free'      : Decimal(_what_find.get('withdrawAvailable')),
+                                            'locked'    : Decimal(_what_find.get('balance')) - Decimal(_what_find.get('withdrawAvailable'))   }
+
+                            # Build List Assets Dict
+                            _my_balance.append(_my_asset)
+                            
+                            if _my_asset.get('asset') == 'USDT':
+                                _tot_usd = _tot_usd + Decimal(_what_find.get('balance'))
+                    
+                    # Add Total USD at the first position of the list
+                    _my_balance.insert( 0 , { 'totals' : { 'tot_usd': _tot_usd }   }   )
+                    
+                    # Result
+                    self.response_tuple = ('OK', _my_balance)
+                    
+                else:
+                    
+                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_get_balance_total',_inputs,'balances not in _account_info')}")
 
         except BinanceAPIException as e:
             _error = str(e).split(":")[1]
@@ -1204,12 +1240,16 @@ class BinanceAPI:
                     _my_openorders  = self.client.get_open_orders()
                 elif self.wallet == 'margin':
                     _my_openorders  = self.client.get_open_margin_orders()
+                elif self.wallet == 'futures':
+                    _my_openorders  = self.client.futures_get_open_orders()                    
                 self.response_tuple = ('OK', _my_openorders)
             else:
                 if self.wallet == 'spot':
                     _my_openorders  = self.client.get_open_orders(symbol=p_symbol_input)
                 elif self.wallet == 'margin':
                     _my_openorders  = self.client.get_open_margin_orders(symbol=p_symbol_input)
+                elif self.wallet == 'futures':
+                    _my_openorders  = self.client.futures_get_open_orders(symbol=p_symbol_input)                      
                 self.response_tuple = ('OK', _my_openorders)
 
         except BinanceAPIException as e:
@@ -1217,6 +1257,39 @@ class BinanceAPI:
             self.response_tuple = ('NOK',  _error)
         except:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_get_open_orders',_inputs,traceback.format_exc(2))}")
+
+        return(self.response_tuple)
+
+    # Get Open Account Position Info - ONLY Futures
+    def account_get_open_position_information(self, p_symbol_input = None):
+
+        # Prepare
+        _inputs = f"{self.wallet}|{p_symbol_input}"
+        _my_positions = None
+
+        try:
+            if not p_symbol_input:
+                if self.wallet == 'spot':
+                    _self.response_tuple = ('NOK',  'No position Info for Spot Wallet')
+                elif self.wallet == 'margin':
+                    _self.response_tuple = ('NOK',  'No position Info for Margin Wallet')
+                elif self.wallet == 'futures':
+                    _my_positions  = self.client.futures_position_information()                    
+                self.response_tuple = ('OK', _my_positions)
+            else:
+                if self.wallet == 'spot':
+                    _self.response_tuple = ('NOK',  'No position Info for Spot Wallet')
+                elif self.wallet == 'margin':
+                    _self.response_tuple = ('NOK',  'No position Info for Margin Wallet')
+                elif self.wallet == 'futures':
+                    _my_positions  = self.client.futures_position_information(symbol=p_symbol_input)                      
+                self.response_tuple = ('OK', _my_positions)
+
+        except BinanceAPIException as e:
+            _error = str(e).split(":")[1]
+            self.response_tuple = ('NOK',  _error)
+        except:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','get_position_information',_inputs,traceback.format_exc(2))}")
 
         return(self.response_tuple)
 
@@ -1232,6 +1305,8 @@ class BinanceAPI:
                 _result_raw = self.client.cancel_order( symbol = p_symbol_input, orderId =p_orderid)
             elif self.wallet == 'margin':
                 _result_raw = self.client.cancel_margin_order( symbol = p_symbol_input, orderId =p_orderid)
+            elif self.wallet == 'futures':
+                _result_raw = self.client.futures_cancel_order( symbol = p_symbol_input, orderId =p_orderid)                
             self.response_tuple = ('OK', _result_raw)
 
         except BinanceAPIException as e:
@@ -1307,7 +1382,7 @@ class BinanceAPI:
 
     """ FORMAT BINANCE RESULT """
 
-    # Format Spot Open Orders Results
+    # Format Spot & Margin Open Orders Results
     def account_format_open_orders_result(self, p_result):
 
         # Prepare
@@ -1337,7 +1412,10 @@ class BinanceAPI:
             _row0   = f"Date: {_date}"
             _row1   = f"ExchangeOrderID: {_dict_result.get('orderId')}"
             _row3   = f"Symbol: {_dict_result.get('symbol')}"
-            _row4   = f"Side: {_dict_result.get('side')}"
+            if self.wallet == 'futures':
+                _row4 = f"Side: {'LONG' if _dict_result.get('side') == 'BUY' else 'SHORT'}"
+            else:
+                _row4 = f"Side: {_dict_result.get('side')}"
             _row5   = f"Quantity: {_dict_result.get('origQty')}"
             
             # Build Output
@@ -1403,6 +1481,34 @@ class BinanceAPI:
                                     f"{_row_sl_6} {chr(10)}"\
                                     f"{_row_sl_7}"
 
+            elif _type == 'STOP' or _type == 'TAKE_PROFIT': # FUTURES - STOP LIMIT LONG (STOP) & SHORT (TAKE_PROFIT) TYPE ORDER 
+
+                _row_sl_2   =   f"Type: Stop-Limit"
+                _row_sl_6   =   f"Price: {_dict_result.get('price')}"
+                _row_sl_7   =   f"Stop: {_dict_result.get('stopPrice')}" 
+
+                _message    =   f"{_row0} {chr(10)}"\
+                                f"{_row1} {chr(10)}"\
+                                f"{_row_sl_2} {chr(10)}"\
+                                f"{_row3} {chr(10)}"\
+                                f"{_row4} {chr(10)}"\
+                                f"{_row5} {chr(10)}"\
+                                f"{_row_sl_6} {chr(10)}"\
+                                f"{_row_sl_7}"
+
+            elif _type == 'STOP_MARKET' or _type == 'TAKE_PROFIT_MARKET': # FUTURES - STOP MARKET LONG (STOP_MARKET) & SHORT (TAKE_PROFIT_MARKET) TYPE ORDER 
+
+                _row_sm_2   =   f"Type: Stop-Market"
+                _row_sm_7   =   f"Stop: {_dict_result.get('stopPrice')}" 
+
+                _message    =   f"{_row0} {chr(10)}"\
+                                f"{_row1} {chr(10)}"\
+                                f"{_row_sm_2} {chr(10)}"\
+                                f"{_row3} {chr(10)}"\
+                                f"{_row4} {chr(10)}"\
+                                f"{_row5} {chr(10)}"\
+                                f"{_row_sm_7}"
+
             else:
 
                 self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_format_open_orders_result',_inputs,_type+' _type unknown ')}")
@@ -1416,7 +1522,7 @@ class BinanceAPI:
 
         return(self.response_tuple)
 
-    # Format Spot Order Result
+    # Format Spot & Margin Order Result
     def account_format_create_order_result(self, p_result, p_cancel = False, p_type = None):
 
         # Prepare
@@ -1494,7 +1600,10 @@ class BinanceAPI:
         _row2   = f"Status: {p_result.get('status')}"
         _row3   = f"Order Id: {p_result.get('orderId')}"
         _row5   = f"Symbol: {p_result.get('symbol')}"
-        _row6   = f"Side: {p_result.get('side')}"
+        if self.wallet == 'futures':
+            _row6 = f"Side: {'LONG' if p_result.get('side') == 'BUY' else 'SHORT'}"
+        else:
+            _row6 = f"Side: {p_result.get('side')}"
 
         # Build Output
         if _type == 'MARKET': # MARKET ORDER TYPE  
@@ -1568,7 +1677,7 @@ class BinanceAPI:
         elif _type == 'STOP_LOSS_LIMIT': # STOP LIMIT ORDER TYPE  
 
             """
-            The output of a Stop-Limit is very poor .. for this I show very little.
+            The output of a Stop-Limit is very poor .. for this i show very little.
             Example of output: {'symbol': 'BTCUSDT', 'orderId': 2786196182, 'orderListId': -1, 'clientOrderId': 'p0qTfCHG0tAxFoivBqqI72', 'transactTime': 1596104181799}
             """
 
@@ -1577,7 +1686,6 @@ class BinanceAPI:
             _row_sl_4   =   f"Type: Stop-Limit"
 
             # Build Message
-
             if not p_cancel:
                 _message    =   f"{_row1} {chr(10)}"\
                                 f"{_row_sl_2} {chr(10)}"\
@@ -1639,6 +1747,48 @@ class BinanceAPI:
                         f"{_row_o_13} {chr(10)}"\
                         f"{_row_o_14}"
 
+        elif _type == 'STOP' or _type == 'TAKE_PROFIT': # FUTURES - STOP LIMIT LONG (STOP) & SHORT (TAKE_PROFIT) TYPE ORDER
+            
+            # Build Rows
+            #_row_sl_2   =   f"Status: NEW"
+            _row_sl_4   =   f"Type: Stop-Limit"
+
+            # Build Message
+            if not p_cancel:
+                pass
+            else:
+                _row_sl_7   =   f"Stop: {p_result.get('stopPrice')}"
+                _row_sl_8   =   f"Limit: {p_result.get('price')}"
+                _row_sl_9   =   f"Quantity: {p_result.get('origQty')}"
+                _message    =   f"{_row2} {chr(10)}"\
+                                f"{_row3} {chr(10)}"\
+                                f"{_row_sl_4} {chr(10)}"\
+                                f"{_row5} {chr(10)}"\
+                                f"{_row6} {chr(10)}"\
+                                f"{_row_sl_7} {chr(10)}"\
+                                f"{_row_sl_8} {chr(10)}"\
+                                f"{_row_sl_9}"
+            
+        elif _type == 'STOP_MARKET' or _type == 'TAKE_PROFIT_MARKET': # FUTURES - STOP MARKET LONG (STOP_MARKET) & SHORT (TAKE_PROFIT_MARKET) TYPE ORDER 
+            
+            # Build Rows
+            #_row_sl_2   =   f"Status: NEW"
+            _row_sl_4   =   f"Type: Stop-Market"
+
+            # Build Message
+            if not p_cancel:
+                pass
+            else:
+                _row_sl_7   =   f"Stop: {p_result.get('stopPrice')}"
+                _row_sl_9   =   f"Quantity: {p_result.get('origQty')}"
+                _message    =   f"{_row2} {chr(10)}"\
+                                f"{_row3} {chr(10)}"\
+                                f"{_row_sl_4} {chr(10)}"\
+                                f"{_row5} {chr(10)}"\
+                                f"{_row6} {chr(10)}"\
+                                f"{_row_sl_7} {chr(10)}"\
+                                f"{_row_sl_9}"
+            
         else:
 
             self.response_tuple = ('NOK',  f"{ utility.my_log('Error','account_format_create_order_result',_inputs,_type+' _type unknown')}")
@@ -1646,5 +1796,75 @@ class BinanceAPI:
 
         # Output
         self.response_tuple = ('OK', _message)
+
+        return(self.response_tuple)
+
+    # Format Futures Open Positions Results
+    def account_format_open_position_result(self, p_result):
+
+        # Prepare
+        _inputs         = None
+        _dict_result    = {}
+        _list_output    = []
+        
+        # Specific
+        _entry_price        = None
+        _leverage           = None
+        _liquidation_price  = None
+        _mark_price         = None
+        _size               = 0
+        _side               = None
+        _symbol             = None
+        _pnl                = None
+
+        # Build Output --> for each position found
+        for _dict_result in p_result:
+            
+            # Prepare _size
+            if _dict_result.get('positionAmt'):
+                try:
+                    _size = Decimal(_dict_result.get('positionAmt'))
+                except Exception:
+                    _inputs      = f"{_dict_result}"
+                    _inputs_temp = f"||{type(_dict_result.get('positionAmt'))},{_dict_result.get('positionAmt')}"
+                    self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_format_open_position_result',_inputs+_inputs_temp,traceback.format_exc(2))}")
+                    return(self.response_tuple)
+            
+            # Only position with something
+            if _size != 0:
+                
+                # Get Values
+                _entry_price        = _dict_result.get('entryPrice')              
+                _leverage           = _dict_result.get('leverage')
+                _liquidation_price  = _dict_result.get('liquidationPrice')
+                _mark_price         = _dict_result.get('markPrice')
+                _side               = 'LONG' if _size > 0 else 'SHORT'
+                _symbol             = _dict_result.get('symbol')
+                _pnl                = _dict_result.get('unRealizedProfit')
+
+                # Build Output
+                _row1   = f"Symbol: {_symbol}"
+                _row2   = f"Side: {_side}"
+                _row3   = f"Quantity: {_size}"
+                _row4   = f"Leverage: {_leverage}x"            
+                _row5   = f"Entry Price: {_entry_price}"
+                _row6   = f"Mark Price: {_mark_price}"
+                _row7   = f"Liq.Price: {_liquidation_price}"
+                _row8   = f"PNL(ROE %): {_pnl}"                        
+                
+                _message =  f"{_row1} {chr(10)}"\
+                            f"{_row2} {chr(10)}"\
+                            f"{_row3} {chr(10)}"\
+                            f"{_row4} {chr(10)}"\
+                            f"{_row5} {chr(10)}"\
+                            f"{_row6} {chr(10)}"\
+                            f"{_row7} {chr(10)}"\
+                            f"{_row8} {chr(10)}"
+        
+                # Add Message on List
+                _list_output.append(_message)
+        
+        # Output
+        self.response_tuple = ('OK', _list_output)
 
         return(self.response_tuple)
