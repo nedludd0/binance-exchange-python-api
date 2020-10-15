@@ -132,6 +132,35 @@ def run(choose, symbol):
             print(f"-- ERROR --")
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
+    # Get Symbol Info
+    elif choose == 8:
+        
+        _wallet = 'spot'
+        #_wallet = 'margin'        
+        _wallet = 'futures'        
+        
+        _binance_obj = BinanceAPI(p_wallet = _wallet)
+        
+        if _binance_obj.check_client_build_ok():
+                    
+            _out = _binance_obj.general_get_symbol_info_filter('MAX_NUM_ORDERS', symbol)
+    
+            if _out[0] == 'OK':
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")             
+                pprint(_out[1])
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")  
+
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.get_client_msg_nok()}") 
 
     #### ACCOUNT ENDPOINTS SPOT ####
     
@@ -531,11 +560,74 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}")
 
     # MakeOrder Futures
-    #elif choose == 43:
+    elif choose == 43:
+                
+        _wallet = 'futures'
         
-        #_wallet = 'futures'
+        _limit  = None
+        _stop   = None
+        _price  = None       
         
-        #pass
+        # Inputs
+        print(f"{chr(10)}------------")        
+        print(f"-- INPUTs --")
+        print(f"------------")
+        print(f"Symbol: {symbol}")
+        _type = input("Choose TYPE (market 1, limit 2, stop_limit 3 or oco 4): ")
+        if int(_type) == 1:
+            _type_str = 'market'
+        elif int(_type) == 2:
+            _type_str   = 'limit'
+            _limit      = input("Choose LIMIT: ")
+        elif int(_type) == 3:
+            _type_str   = 'stop_limit'
+            _stop       = input("Choose STOP: ")             
+            _limit      = input("Choose LIMIT: ")                        
+        elif int(_type) == 4:
+            _type_str   = 'oco'
+            _stop       = input("Choose STOP  (sl) : ")            
+            _limit      = input("Choose LIMIT (sl) : ")                                                 
+            _price      = input("Choose PRICE (tp) : ")                                                       
+        _side = input("Choose SIDE (buy 1 or sell 2): ")
+        _size = input("Choose SIZE %: ")
+        
+        
+        _size = 0.037
+                
+        print(f"{chr(10)}")
+
+        if _side == '1':
+            _side = 'buy'
+        elif _side == '2':
+            _side = 'sell'
+
+        # Make Order
+        _binance_obj = BinanceAPI(p_api_pub_key = api_key, p_api_secret_key = api_sec, p_symbol_first = symbol_first, p_symbol_second = symbol_second, p_wallet = _wallet)
+
+        if _binance_obj.check_client_build_ok():
+                    
+            _out = _binance_obj.account_create_order(_type_str, _side, _size, _limit, _stop, _price)
+    
+            if _out[0] == 'OK':
+                #_formatted_output_temp = _binance_obj.account_format_create_order_result( p_result = _out[1][0], p_type = _type_str)
+                #_formatted_output      = _formatted_output_temp[1] 
+                _formatted_output      = _out[1]
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")            
+                print(f"{_formatted_output}")          
+                print(f"{chr(10)}------------")   
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")
+        
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.get_client_msg_nok()}") 
             
     # GetOpenOrders Futures
     elif choose == 53:
@@ -667,38 +759,12 @@ def run(choose, symbol):
         
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
 
-        _wallet = 'futures'
-    
-        _binance_obj = BinanceAPI(p_api_pub_key = api_key, p_api_secret_key = api_sec, p_wallet = _wallet)
-        
-        if _binance_obj.check_client_build_ok():
-
-            _out = _binance_obj.account_get_balance_asset_free('BNB')
-    
-            if _out[0] == 'OK':
-                print(f"{chr(10)}------------")
-                print(f"-- RESULT --")
-                print(f"------------")          
-                print(f"Tot Free: {_out[1]:.8f}")
-            elif _out[0] == 'NOK':
-                print(f"{chr(10)}-----------")
-                print(f"-- ERROR --")
-                print(f"-----------") 
-                print(f"{_out[1]}")
-                print(f"{chr(10)}")
-            
-        else:
-            
-            print(f"-- ERROR --")
-            print(f"{_binance_obj.get_client_msg_nok()}")
-
-
 
 if __name__ == "__main__":
     
     
     symbol_first    = 'BTC'
-    symbol_second   = 'BUSD'
+    symbol_second   = 'USDT'
     symbol          = f"{symbol_first}{symbol_second}"    
     
     print(f"{chr(10)}Pair we are working on: {symbol}{chr(10)}")
@@ -708,7 +774,8 @@ if __name__ == "__main__":
                     f"----------------- GENERAL + SPOT DUST --------------{chr(10)}"\
                     f"----------------------------------------------------{chr(10)}"\
                     f"Get Avg Price Symbol  [1] - Get RateLimits     [2]  {chr(10)}"\
-                    f"Test Connectivity     [3] - Convert Dust Spot  [4]  {chr(10)}{chr(10)}"\
+                    f"Test Connectivity     [3] - Convert Dust Spot  [4]  {chr(10)}"\
+                    f"Get Symbol Info       [8] ------------------------  {chr(10)}{chr(10)}"\
                     f"----------------------------------------------------{chr(10)}"\
                     f"----------------- ACCOUNT SPOT ---------------------{chr(10)}"\
                     f"----------------------------------------------------{chr(10)}"\
@@ -722,7 +789,7 @@ if __name__ == "__main__":
                     f"----------------------------------------------------{chr(10)}"\
                     f"----------------- ACCOUNT FUTURES ------------------{chr(10)}"\
                     f"----------------------------------------------------{chr(10)}"\
-                    f"Balance               [33] - Make Order        [xx] {chr(10)}"\
+                    f"Balance               [33] - Make Order        [43] {chr(10)}"\
                     f"Get Open Orders       [53] - Cancel Order      [63] {chr(10)}"\
                     f"Get Open Positions    [73] ------------------------ {chr(10)}{chr(10)}"\
                     f"CHOOSE Number: ")

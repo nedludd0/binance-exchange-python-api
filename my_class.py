@@ -70,6 +70,7 @@ class BinanceAPI:
             return True
         else:
             return False
+
     # Return error when the client build went wrong 
     def get_client_msg_nok(self):
         return self.client_builded[1]
@@ -221,17 +222,27 @@ class BinanceAPI:
 
         return(self.response_tuple)
 
-    # Get Symbol Info 
+    # PRICE_FILTER
+    # PERCENT_PRICE
     # LOT_SIZE      --> It is used for both buy and sell
     # MIN_NOTIONAL  --> It is used for both buy and sell and it is applied on the symbol_second in the following way: quantity symbol_first * avg price symbol > minNotional of symbol
+    # ICEBERG_PARTS
+    # MARKET_LOT_SIZE
+    # MAX_NUM_ALGO_ORDERS    
+    # MAX_NUM_ORDERS
     def general_get_symbol_info_filter(self, p_what_filter, p_symbol_input = None):
 
-        # Prepare
-        _inputs                 = None        
+        """ PREPARE """
+        
+        # Defaults
+        _inputs                 = None
         _symbol_info            = None
-        _symbol_work            = None        
-        _output_lot_size        = {}
-        _output_min_notional    = {}
+        _symbol_info_dict       = {} 
+        _symbol_work            = None
+        _filters                = None
+        _filter                 = None        
+        _response_tuple_local   = None
+        _output_local           = {}
 
         # Choose Symbol
         if not p_symbol_input:
@@ -240,58 +251,204 @@ class BinanceAPI:
             _symbol_work = p_symbol_input
 
         # Set Inputs
-        _inputs = f"{p_what_filter}|{_symbol_work}"
+        _inputs = f"{p_what_filter}|{_symbol_work}|{self.wallet}"
 
-        try:
+        """ FUNCTIONS FOR EVERY FILTER """
 
-            _symbol_info = self.client.get_symbol_info(symbol=_symbol_work)
-
-            if _symbol_info:
-                filters = _symbol_info.get('filters')
-                if len(filters) > 0:
-
-                    for f in filters:
-
-                        if p_what_filter == 'LOT_SIZE':
-
-                            if f.get('filterType') == p_what_filter:
-                                _output_lot_size["LOT_SIZE_symbol"] = _symbol_work
-                                try:
-                                    _output_lot_size["LOT_SIZE_maxQty"]     = Decimal(f.get('maxQty'))
-                                    _output_lot_size["LOT_SIZE_minQty"]     = Decimal(f.get('minQty'))   # quantity to buy or sell > symbol minQty
-                                    _output_lot_size["LOT_SIZE_step_size"]  = Decimal(f.get('stepSize')) # the quantity to buy or sell must be an exact multiple of symbol stepSize
-                                    self.response_tuple = ('OK', _output_lot_size)
-                                except Exception:
-                                    self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter',_inputs,traceback.format_exc(2))}")
-                                break
-
-                        elif p_what_filter == 'MIN_NOTIONAL':
-
-                            if f.get('filterType') == p_what_filter:
-                                _output_min_notional["LOT_SIZE_symbol"] = _symbol_work
-                                try:
-                                    _output_min_notional["LOT_SIZE_minNotional"]    = Decimal(f.get('minNotional'))
-                                    _output_min_notional["LOT_SIZE_applyToMarket"]  = f.get('applyToMarket')
-                                    _output_min_notional["LOT_SIZE_avgPriceMins"]   = f.get('avgPriceMins')
-                                    self.response_tuple = ('OK', _output_min_notional)
-                                except Exception:
-                                    self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter',_inputs,traceback.format_exc(2))}")
-                                break
-
-                        else:
-                            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,'what_filter is unknown')}")
-
+        # Get PRICE_FILTER info
+        def price_filter(_symbol, _filter):
+            try:
+                if self.wallet == 'spot' or self.wallet == 'margin' or self.wallet == 'futures':
+                    _output_local["PRICE_FILTER_symbol"]     = _symbol
+                    _output_local["PRICE_FILTER_minPrice"]   = Decimal(_filter.get('minPrice')) if _filter.get('minPrice') else _filter.get('minPrice')
+                    _output_local["PRICE_FILTER_maxPrice"]   = Decimal(_filter.get('maxPrice')) if _filter.get('maxPrice') else _filter.get('maxPrice')
+                    _output_local["PRICE_FILTER_tickSize"]   = Decimal(_filter.get('tickSize')) if _filter.get('tickSize') else _filter.get('tickSize')
+                    _response_tuple_local = ('OK', _output_local)
                 else:
-                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,'filters is None')}")
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.price_filter',_inputs,self.wallet+': wallet is unknown')}")
+            except Exception:
+                _response_tuple_local = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter.price_filter',_inputs,traceback.format_exc(2))}")
+            return(_response_tuple_local)
 
+        # Get PERCENT_PRICE info
+        def percent_price(_symbol, _filter):
+            try:
+                if self.wallet == 'spot' or self.wallet == 'margin' or self.wallet == 'futures':
+                    _output_local["PERCENT_PRICE_symbol"] = _symbol                    
+                    if self.wallet == 'spot' or self.wallet == 'margin':
+                        _output_local["PERCENT_PRICE_avgPriceMins"] = int(_filter.get('avgPriceMins')) if _filter.get('avgPriceMins') else _filter.get('avgPriceMins')                                
+                    else:
+                        _output_local["PERCENT_PRICE_multiplierDecimal"] = int(_filter.get('multiplierDecimal')) if _filter.get('multiplierDecimal') else _filter.get('multiplierDecimal')                                
+                    _output_local["PERCENT_PRICE_multiplierUp"]     = Decimal(_filter.get('multiplierUp'))      if _filter.get('multiplierUp')      else _filter.get('multiplierUp')
+                    _output_local["PERCENT_PRICE_multiplierDown"]   = Decimal(_filter.get('multiplierDown'))    if _filter.get('multiplierDown')    else _filter.get('multiplierDown')
+                    _response_tuple_local = ('OK', _output_local)
+                else:
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.percent_price',_inputs,self.wallet+': wallet is unknown')}")                    
+            except Exception:
+                _response_tuple_local = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter.percent_price',_inputs,traceback.format_exc(2))}")
+            return(_response_tuple_local)
+        
+        # Get LOT_SIZE info
+        def lot_size(_symbol, _filter):
+            try:
+                if self.wallet == 'spot' or self.wallet == 'margin' or self.wallet == 'futures':                
+                    _output_local["LOT_SIZE_symbol"]     = _symbol
+                    _output_local["LOT_SIZE_maxQty"]     = Decimal(_filter.get('maxQty'))    if _filter.get('maxQty')    else _filter.get('maxQty')
+                    _output_local["LOT_SIZE_minQty"]     = Decimal(_filter.get('minQty'))    if _filter.get('minQty')    else _filter.get('minQty') # quantity to buy or sell > symbol minQty
+                    _output_local["LOT_SIZE_stepSize"]   = Decimal(_filter.get('stepSize'))  if _filter.get('stepSize')  else _filter.get('stepSize') # the quantity to buy or sell must be an exact multiple of symbol stepSize
+                    _response_tuple_local = ('OK', _output_local)
+                else:
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.lot_size',_inputs,self.wallet+': wallet is unknown')}")                                
+            except Exception:
+                _response_tuple_local = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter.lot_size',_inputs,traceback.format_exc(2))}")
+            return(_response_tuple_local)
+
+        # Get MIN_NOTIONAL info
+        def min_notional(_symbol, _filter):
+            try:
+                if self.wallet == 'spot' or self.wallet == 'margin':                    
+                    _output_local["MIN_NOTIONAL_symbol"]         = _symbol
+                    _output_local["MIN_NOTIONAL_minNotional"]    = Decimal(_filter.get('minNotional')) if _filter.get('minNotional') else _filter.get('minNotional')
+                    _output_local["MIN_NOTIONAL_applyToMarket"]  = _filter.get('applyToMarket')
+                    _output_local["MIN_NOTIONAL_avgPriceMins"]   = int(_filter.get('avgPriceMins')) if _filter.get('avgPriceMins') else _filter.get('avgPriceMins')
+                    _response_tuple_local = ('OK', _output_local)
+                elif self.wallet == 'futures':
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.min_notional',_inputs,self.wallet+': attention! for this wallet min_notional does not exist ')}")                                
+                else:
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.min_notional',_inputs,self.wallet+': wallet is unknown')}")               
+            except Exception:
+                _response_tuple_local = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter.min_notional',_inputs,traceback.format_exc(2))}")
+            return(_response_tuple_local)
+
+        # Get ICEBERG_PARTS info
+        def iceberg_parts(_symbol, _filter):
+            try:
+                if self.wallet == 'spot' or self.wallet == 'margin':                    
+                    _output_local["ICEBERG_PARTS_symbol"]   = _symbol
+                    _output_local["ICEBERG_PARTS_limit"]    = int(_filter.get('limit')) if _filter.get('limit') else _filter.get('limit')
+                    _response_tuple_local = ('OK', _output_local)
+                elif self.wallet == 'futures':
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.iceberg_parts',_inputs,self.wallet+': attention! for this wallet iceberg_parts does not exist ')}")                                
+                else:
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.iceberg_parts',_inputs,self.wallet+': wallet is unknown')}")               
+            except Exception:
+                _response_tuple_local = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter.iceberg_parts',_inputs,traceback.format_exc(2))}")
+            return(_response_tuple_local)
+
+        # Get MARKET_LOT_SIZE info
+        def market_lot_size(_symbol, _filter):
+            try:
+                if self.wallet == 'spot' or self.wallet == 'margin' or self.wallet == 'futures':                
+                    _output_local["MARKET_LOT_SIZE_symbol"]      = _symbol
+                    _output_local["MARKET_LOT_SIZE_minQty"]      = Decimal(_filter.get('minQty'))    if _filter.get('minQty')    else _filter.get('minQty')
+                    _output_local["MARKET_LOT_SIZE_maxQty"]      = Decimal(_filter.get('maxQty'))    if _filter.get('maxQty')    else _filter.get('maxQty')
+                    _output_local["MARKET_LOT_SIZE_stepSize"]    = Decimal(_filter.get('stepSize'))  if _filter.get('stepSize')  else _filter.get('stepSize')
+                    _response_tuple_local = ('OK', _output_local)
+                else:
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.market_lot_size',_inputs,self.wallet+': wallet is unknown')}")                    
+            except Exception:
+                _response_tuple_local = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter.market_lot_size',_inputs,traceback.format_exc(2))}")
+            return(_response_tuple_local)
+
+        # Get MAX_NUM_ALGO_ORDERS info
+        def max_num_algo_orders(_symbol, _filter):
+            try:
+                if self.wallet == 'spot' or self.wallet == 'margin' or self.wallet == 'futures':
+                    _output_local["MAX_NUM_ALGO_ORDERS_symbol"] = _symbol
+                    if self.wallet == 'spot' or self.wallet == 'margin':
+                        _output_local["MAX_NUM_ALGO_ORDERS_maxNumAlgoOrders"] = int(_filter.get('maxNumAlgoOrders')) if _filter.get('maxNumAlgoOrders') else _filter.get('maxNumAlgoOrders')                                
+                    else:
+                        _output_local["MAX_NUM_ALGO_ORDERS_limit"] = int(_filter.get('limit')) if _filter.get('limit') else _filter.get('limit')
+                    _response_tuple_local = ('OK', _output_local)                                                        
+                else:
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.max_num_algo_orders',_inputs,self.wallet+': wallet is unknown')}")                    
+            except Exception:
+                _response_tuple_local = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter.max_num_algo_orders',_inputs,traceback.format_exc(2))}")
+            return(_response_tuple_local)
+
+        # Get MAX_NUM_ORDERS info
+        def max_num_orders(_symbol, _filter):
+            try:
+                if self.wallet == 'spot' or self.wallet == 'margin' or self.wallet == 'futures':
+                    _output_local["MAX_NUM_ORDERS_symbol"] = _symbol
+                    if self.wallet == 'spot' or self.wallet == 'margin':
+                        _output_local["MAX_NUM_ORDERS_maxNumOrders"] = int(_filter.get('maxNumOrders')) if _filter.get('maxNumOrders') else _filter.get('maxNumOrders')                                
+                    else:
+                        _output_local["MAX_NUM_ORDERS_limit"] = int(_filter.get('limit')) if _filter.get('limit') else _filter.get('limit') 
+                    _response_tuple_local = ('OK', _output_local)                                                       
+                else:
+                    _response_tuple_local = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter.max_num_orders',_inputs,self.wallet+': wallet is unknown')}")                    
+            except Exception:
+                _response_tuple_local = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter.max_num_orders',_inputs,traceback.format_exc(2))}")
+            return(_response_tuple_local)
+
+        """ GET SYMBOL INFO """
+        try:
+            if self.wallet == 'spot' or self.wallet == 'margin':
+                _symbol_info = self.client.get_symbol_info(symbol=_symbol_work)
+            elif self.wallet == 'futures':
+                _symbol_info_dict = self.client.futures_exchange_info()                 
+                if _symbol_info_dict['symbols']:                    
+                    for f in _symbol_info_dict['symbols']:
+                        if f.get('symbol') == _symbol_work:
+                            _symbol_info = f                           
+                            break
+                else:
+                    self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,_symbol_info_dict['symbols']+': _symbol_info_dict[symbols] is None')}")
+                    return(self.response_tuple)   
             else:
-                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,'_symbol_info is None')}")
-
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,self.wallet+': wallet is unknown')}")
+                return(self.response_tuple)
         except BinanceAPIException as e:
             _error = str(e).split(":")[1]
             self.response_tuple = ('NOK',  _error)
+            return(self.response_tuple)
         except Exception:
             self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_info_filter',_inputs,traceback.format_exc(2))}")
+            return(self.response_tuple)
+
+        """ WORK ON SYMBOL INFO """
+        if _symbol_info:
+            _filters = _symbol_info.get('filters')
+            if len(_filters) > 0:
+                for _filter in _filters:
+                                        
+                    if _filter.get('filterType') == p_what_filter:
+
+                        if p_what_filter == 'PRICE_FILTER':
+                            self.response_tuple = price_filter(_symbol_work, _filter)
+                            break
+                        elif p_what_filter == 'PERCENT_PRICE':
+                            self.response_tuple = percent_price(_symbol_work, _filter)
+                            break
+                        elif p_what_filter == 'LOT_SIZE':
+                            self.response_tuple = lot_size(_symbol_work, _filter)
+                            break
+                        elif p_what_filter == 'MIN_NOTIONAL':                            
+                            self.response_tuple = min_notional(_symbol_work, _filter)
+                            break
+                        elif p_what_filter == 'ICEBERG_PARTS':
+                            self.response_tuple = iceberg_parts(_symbol_work, _filter)
+                            break
+                        elif p_what_filter == 'MARKET_LOT_SIZE':
+                            self.response_tuple = market_lot_size(_symbol_work, _filter)
+                            break
+                        elif p_what_filter == 'MAX_NUM_ALGO_ORDERS':
+                            self.response_tuple = max_num_algo_orders(_symbol_work, _filter)
+                            break                            
+                        elif p_what_filter == 'MAX_NUM_ORDERS':
+                            self.response_tuple = max_num_orders(_symbol_work, _filter)
+                            break
+                        else:                          
+                            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,p_what_filter+': what_filter is unknown')}")
+
+                    else:                          
+                        self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,p_what_filter+': what_filter is unknown')}")
+            else:
+                self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,'_filters is None')}")
+
+        else:
+            self.response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_info_filter',_inputs,'_symbol_info is None')}")
 
         return(self.response_tuple)
 
@@ -821,8 +978,8 @@ class BinanceAPI:
         """ Calculate Quantity End """
         
         _symbol_min_qty_value          = _symbol_lot_size[1].get('LOT_SIZE_minQty')        
-        _symbol_step_size_value        = _symbol_lot_size[1].get('LOT_SIZE_step_size')
-        _symbol_min_notional_value     = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
+        _symbol_step_size_value        = _symbol_lot_size[1].get('LOT_SIZE_stepSize')
+        _symbol_min_notional_value     = _symbol_min_notional[1].get('MIN_NOTIONAL_minNotional')
         _symbol_fee_value              = _symbol_fee[1]
         _symbol_price_value            = _symbol_price[1]
         
@@ -998,9 +1155,9 @@ class BinanceAPI:
 
         """ Calculate Quantity End """
 
-        _symbol_step_size_value    = _symbol_lot_size[1].get('LOT_SIZE_step_size')
+        _symbol_step_size_value    = _symbol_lot_size[1].get('LOT_SIZE_stepSize')
         _symbol_min_qty_value      = _symbol_lot_size[1].get('LOT_SIZE_minQty')
-        _symbol_min_notional_value = _symbol_min_notional[1].get('LOT_SIZE_minNotional')
+        _symbol_min_notional_value = _symbol_min_notional[1].get('MIN_NOTIONAL_minNotional')
         _symbol_price_value        = _symbol_price[1]
         
         try:
@@ -1048,6 +1205,7 @@ class BinanceAPI:
         _quantity_post_size_applied = None
         _symbol_exists              = None
         _client_type                = None
+        _client_side                = None
         _client_timeinforce         = None
         _what_fee                   = None
 
@@ -1078,25 +1236,33 @@ class BinanceAPI:
 
         # Choose SIDE and calculate QUANTITY
         if p_side == 'sell':
-            _client_side                = self.client.SIDE_SELL
-            _quantity_calculated_result = self.account_get_quantity_to_sell(p_type, p_size, p_limit)
-            if _quantity_calculated_result[0] == 'OK':
-                _quantity_to_use            = _quantity_calculated_result[1][0]
-                _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
-                _quantity_post_size_applied = _quantity_calculated_result[1][2]
-            else:
-                self.response_tuple = ('NOK',  _quantity_calculated_result[1])
-                return(self.response_tuple)
+            
+            _client_side = self.client.SIDE_SELL
+            
+            if self.wallet != 'futures':
+                _quantity_calculated_result = self.account_get_quantity_to_sell(p_type, p_size, p_limit)
+                if _quantity_calculated_result[0] == 'OK':
+                    _quantity_to_use            = _quantity_calculated_result[1][0]
+                    _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
+                    _quantity_post_size_applied = _quantity_calculated_result[1][2]
+                else:
+                    self.response_tuple = ('NOK',  _quantity_calculated_result[1])
+                    return(self.response_tuple)
+                    
         elif p_side == 'buy':
-            _client_side                = self.client.SIDE_BUY
-            _quantity_calculated_result = self.account_get_quantity_to_buy(_what_fee, p_type, p_size, _how2get_qta2buy, p_limit)
-            if _quantity_calculated_result[0] == 'OK':
-                _quantity_to_use            = _quantity_calculated_result[1][0]
-                _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
-                _quantity_post_size_applied = _quantity_calculated_result[1][2]
-            else:
-                self.response_tuple = ('NOK',  _quantity_calculated_result[1])
-                return(self.response_tuple)
+            
+            _client_side = self.client.SIDE_BUY
+            
+            if self.wallet != 'futures':
+                _quantity_calculated_result = self.account_get_quantity_to_buy(_what_fee, p_type, p_size, _how2get_qta2buy, p_limit)
+                if _quantity_calculated_result[0] == 'OK':
+                    _quantity_to_use            = _quantity_calculated_result[1][0]
+                    _quantity_pre_size_applied  = _quantity_calculated_result[1][1]
+                    _quantity_post_size_applied = _quantity_calculated_result[1][2]
+                else:
+                    self.response_tuple = ('NOK',  _quantity_calculated_result[1])
+                    return(self.response_tuple)
+                    
         else:
             self.response_tuple = ('NOK', f"{utility.my_log('Error', 'account_create_order', _inputs, p_side+' unknown')}")
             return(self.response_tuple)
@@ -1115,6 +1281,14 @@ class BinanceAPI:
                 elif self.wallet == 'margin':
 
                     _order = self.client.create_margin_order(   symbol      = self.symbol,
+                                                                side        = _client_side,
+                                                                type        = _client_type,
+                                                                quantity    = _quantity_to_use   )
+                elif self.wallet == 'futures':
+                    
+                    _quantity_to_use = p_size
+                    
+                    _order = self.client.futures_create_order(  symbol      = self.symbol,
                                                                 side        = _client_side,
                                                                 type        = _client_type,
                                                                 quantity    = _quantity_to_use   )
