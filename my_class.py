@@ -1750,7 +1750,7 @@ class BinanceAPI:
         if p_result.get('status') == 'FILLED':
 
             # Prepare
-            _price          = 0
+            _price          = 0           
             _qty            = 0
             _price_qty      = 0
             _price_qty_tot  = 0
@@ -1998,6 +1998,8 @@ class BinanceAPI:
         _inputs         = None
         _dict_result    = {}
         _list_output    = []
+        _balance_total  = None
+        _margin_temp_1  = None
         
         # Specific
         _entry_price        = None
@@ -2005,10 +2007,18 @@ class BinanceAPI:
         _liquidation_price  = None
         _mark_price         = None
         _size               = 0
+        _margin             = 0
         _side               = None
         _symbol             = None
         _pnl                = None
-
+        
+        # Get Total Balance
+        _temp = None
+        _temp = self.account_get_balance_total()
+        if _temp[0] == 'OK':
+            _balance_total = _temp[1][0].get('totals').get('tot_usd')
+        print(_balance_total)
+        
         # Build Output --> for each position found
         for _dict_result in p_result:
             
@@ -2019,9 +2029,25 @@ class BinanceAPI:
                 except Exception:
                     _inputs      = f"{_dict_result}"
                     _inputs_temp = f"||{type(_dict_result.get('positionAmt'))},{_dict_result.get('positionAmt')}"
-                    self.response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_format_open_position_result',_inputs+_inputs_temp,traceback.format_exc(2))}")
+                    self.response_tuple = ('NOK', f"{ utility.my_log('Exception','account_format_open_position_result',_inputs+_inputs_temp,traceback.format_exc(2))}")
                     return(self.response_tuple)
-            
+
+                try:
+                    _margin_temp_1 = _size * Decimal(_dict_result.get('entryPrice'))
+                except Exception:
+                    _inputs      = f"{_dict_result}"
+                    _inputs_temp = f"||{type(_dict_result.get('entryPrice'))},{_dict_result.get('entryPrice')}"
+                    self.response_tuple = ('NOK', f"{ utility.my_log('Exception','account_format_open_position_result',_inputs+_inputs_temp,traceback.format_exc(2))}")
+                    return(self.response_tuple)
+
+                try:
+                    _margin = _balance_total / _margin_temp_1
+                except Exception:
+                    _inputs      = f"{_dict_result}"
+                    _inputs_temp = f"||{type(_margin_temp_1)},{_margin_temp_1}|{type(_margin_temp_1)},{_margin_temp_1}"
+                    self.response_tuple = ('NOK', f"{ utility.my_log('Exception','account_format_open_position_result',_inputs+_inputs_temp,traceback.format_exc(2))}")
+                    return(self.response_tuple)
+
             # Only position with something
             if _size != 0:
                 
@@ -2042,7 +2068,8 @@ class BinanceAPI:
                 _row5   = f"Entry Price: {_entry_price}"
                 _row6   = f"Mark Price: {_mark_price}"
                 _row7   = f"Liq.Price: {_liquidation_price}"
-                _row8   = f"PNL(ROE %): {_pnl}"                        
+                _row8   = f"Margin: {_margin}"
+                _row9   = f"PNL(ROE %): {_pnl}"
                 
                 _message =  f"{_row1} {chr(10)}"\
                             f"{_row2} {chr(10)}"\
@@ -2051,7 +2078,8 @@ class BinanceAPI:
                             f"{_row5} {chr(10)}"\
                             f"{_row6} {chr(10)}"\
                             f"{_row7} {chr(10)}"\
-                            f"{_row8} {chr(10)}"
+                            f"{_row8} {chr(10)}"\
+                            f"{_row9} {chr(10)}"
         
                 # Add Message on List
                 _list_output.append(_message)

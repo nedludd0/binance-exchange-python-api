@@ -135,7 +135,7 @@ def run(choose, symbol):
     # Get Symbol Info
     elif choose == 8:
         
-        _wallet = 'spot'
+        #_wallet = 'spot'
         #_wallet = 'margin'        
         _wallet = 'futures'        
         
@@ -538,6 +538,7 @@ def run(choose, symbol):
             _out = _binance_obj.account_get_balance_total()
     
             if _out[0] == 'OK':
+                pprint(_out[1])
                 print(f"{chr(10)}------------")
                 print(f"-- RESULT --")
                 print(f"------------")          
@@ -587,20 +588,18 @@ def run(choose, symbol):
             _type_str   = 'oco'
             _stop       = input("Choose STOP  (sl) : ")            
             _limit      = input("Choose LIMIT (sl) : ")                                                 
-            _price      = input("Choose PRICE (tp) : ")                                                       
+            _price      = input("Choose PRICE (tp) : ")                                                                     
         _side = input("Choose SIDE (buy 1 or sell 2): ")
         _size = input("Choose SIZE %: ")
-        
-        
-        _size = 0.037
-                
-        print(f"{chr(10)}")
-
+                        
+        # Decode Side
         if _side == '1':
             _side = 'buy'
         elif _side == '2':
             _side = 'sell'
-
+        
+        _size = 0.045
+        
         # Make Order
         _binance_obj = BinanceAPI(p_api_pub_key = api_key, p_api_secret_key = api_sec, p_symbol_first = symbol_first, p_symbol_second = symbol_second, p_wallet = _wallet)
 
