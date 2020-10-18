@@ -15,7 +15,7 @@ def run(choose, symbol):
 
     #### GENERAL ENDPOINTS + SPOT DUST ####
     
-    # AvgPriceSymbol
+    # Avg Price Symbol
     if choose == 1:
         
         _binance_obj = BinanceAPI(p_symbol_first = symbol_first, p_symbol_second = symbol_second)
@@ -43,8 +43,66 @@ def run(choose, symbol):
             print(f"-- ERROR --")
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
-    # RateLimits
+    # Mark Price Symbol
     elif choose == 2:
+                
+        _binance_obj = BinanceAPI(p_symbol_first = symbol_first, p_symbol_second = symbol_second)
+        
+        if _binance_obj.check_client_build_ok():
+                    
+            _out = _binance_obj.general_get_symbol_mark_price()
+    
+            if _out[0] == 'OK':
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------") 
+                print(f"Symbol: {symbol}")
+                print(f"Mark Price: {_out[1]}")            
+                print(f"{chr(10)}")
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}") 
+
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.get_client_msg_nok()}") 
+
+    # Get Symbol Info
+    elif choose == 3:
+        
+        #_wallet = 'spot'
+        #_wallet = 'margin'        
+        _wallet = 'futures'        
+        
+        _binance_obj = BinanceAPI(p_wallet = _wallet)
+        
+        if _binance_obj.check_client_build_ok():
+                    
+            _out = _binance_obj.general_get_symbol_info_filter('MAX_NUM_ORDERS', symbol)
+    
+            if _out[0] == 'OK':
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")             
+                pprint(_out[1])
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}")  
+
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.get_client_msg_nok()}") 
+
+    # RateLimits
+    elif choose == 4:
 
         _binance_obj = BinanceAPI()
         
@@ -70,7 +128,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
     # TestConnectivity
-    elif choose == 3:
+    elif choose == 5:
         
         # Test connectivity to the Rest API getting the current server time
         _binance_obj = BinanceAPI()
@@ -97,7 +155,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}")
 
     # ConvertMyDust Spot
-    elif choose == 4:
+    elif choose == 6:
 
         _wallet = 'spot'
 
@@ -132,40 +190,10 @@ def run(choose, symbol):
             print(f"-- ERROR --")
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
-    # Get Symbol Info
-    elif choose == 8:
-        
-        #_wallet = 'spot'
-        #_wallet = 'margin'        
-        _wallet = 'futures'        
-        
-        _binance_obj = BinanceAPI(p_wallet = _wallet)
-        
-        if _binance_obj.check_client_build_ok():
-                    
-            _out = _binance_obj.general_get_symbol_info_filter('MAX_NUM_ORDERS', symbol)
-    
-            if _out[0] == 'OK':
-                print(f"{chr(10)}------------")
-                print(f"-- RESULT --")
-                print(f"------------")             
-                pprint(_out[1])
-            elif _out[0] == 'NOK':
-                print(f"{chr(10)}-----------")
-                print(f"-- ERROR --")
-                print(f"-----------") 
-                print(f"{_out[1]}")
-                print(f"{chr(10)}")  
-
-        else:
-            
-            print(f"-- ERROR --")
-            print(f"{_binance_obj.get_client_msg_nok()}") 
-
     #### ACCOUNT ENDPOINTS SPOT ####
     
     # MyBalance Spot
-    elif choose == 31:
+    elif choose == 71:
             
         _wallet = 'spot'
         
@@ -202,7 +230,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}")
                         
     # MakeOrder Spot
-    elif choose == 41:
+    elif choose == 72:
         
         _wallet = 'spot'
         
@@ -269,7 +297,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
     # GetOpenOrders Spot
-    elif choose == 51:
+    elif choose == 73:
         
         _wallet = 'spot'
         
@@ -303,7 +331,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
     # CancelOrder Spot
-    elif choose == 61:
+    elif choose == 74:
         
         _wallet = 'spot'
         
@@ -343,11 +371,10 @@ def run(choose, symbol):
             print(f"-- ERROR --")
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
-
     #### ACCOUNT ENDPOINTS MARGIN ####
 
     # MyBalance Margin
-    elif choose == 32:
+    elif choose == 81:
 
         _wallet = 'margin'
     
@@ -383,7 +410,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}")
 
     # MakeOrder Margin
-    elif choose == 42:
+    elif choose == 82:
         
         _wallet = 'margin'
         
@@ -450,7 +477,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}") 
             
     # GetOpenOrders Margin
-    elif choose == 52:
+    elif choose == 83:
         
         _wallet = 'margin'        
 
@@ -484,7 +511,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
     # CancelOrder Margin
-    elif choose == 62:
+    elif choose == 84:
         
         _wallet = 'margin'
         
@@ -527,7 +554,7 @@ def run(choose, symbol):
     #### ACCOUNT ENDPOINTS FUTURES ####
 
     # MyBalance Futures
-    elif choose == 33:
+    elif choose == 91:
 
         _wallet = 'futures'
     
@@ -561,7 +588,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}")
 
     # MakeOrder Futures
-    elif choose == 43:
+    elif choose == 92:
                 
         _wallet = 'futures'
         
@@ -629,7 +656,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}") 
             
     # GetOpenOrders Futures
-    elif choose == 53:
+    elif choose == 93:
 
         # LIMIT         --> OK
         # STOP LIMIT    --> ??
@@ -671,7 +698,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}") 
         
     # CancelOrder Futures
-    elif choose == 63:
+    elif choose == 94:
         
         _wallet = 'futures'        
        
@@ -717,7 +744,7 @@ def run(choose, symbol):
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
     # GetOpenPositions Futures
-    elif choose == 73:
+    elif choose == 95:
         
         _wallet = 'futures'        
 
@@ -769,27 +796,27 @@ if __name__ == "__main__":
     print(f"{chr(10)}Pair we are working on: {symbol}{chr(10)}")
     
     choose = input( f"CHOOSE WHAT TO DO:  {chr(10)}{chr(10)}"\
-                    f"----------------------------------------------------{chr(10)}"\
-                    f"----------------- GENERAL + SPOT DUST --------------{chr(10)}"\
-                    f"----------------------------------------------------{chr(10)}"\
-                    f"Get Avg Price Symbol  [1] - Get RateLimits     [2]  {chr(10)}"\
-                    f"Test Connectivity     [3] - Convert Dust Spot  [4]  {chr(10)}"\
-                    f"Get Symbol Info       [8] ------------------------  {chr(10)}{chr(10)}"\
-                    f"----------------------------------------------------{chr(10)}"\
-                    f"----------------- ACCOUNT SPOT ---------------------{chr(10)}"\
-                    f"----------------------------------------------------{chr(10)}"\
-                    f"Balance               [31] - Make Order        [41] {chr(10)}"\
-                    f"Get Open Orders       [51] - Cancel Order      [61] {chr(10)}{chr(10)}"\
-                    f"----------------------------------------------------{chr(10)}"\
-                    f"----------------- ACCOUNT MARGIN -------------------{chr(10)}"\
-                    f"----------------------------------------------------{chr(10)}"\
-                    f"Balance               [32] - Make Order        [42] {chr(10)}"\
-                    f"Get Open Orders       [52] - Cancel Order      [62] {chr(10)}{chr(10)}"\
-                    f"----------------------------------------------------{chr(10)}"\
-                    f"----------------- ACCOUNT FUTURES ------------------{chr(10)}"\
-                    f"----------------------------------------------------{chr(10)}"\
-                    f"Balance               [33] - Make Order        [43] {chr(10)}"\
-                    f"Get Open Orders       [53] - Cancel Order      [63] {chr(10)}"\
-                    f"Get Open Positions    [73] ------------------------ {chr(10)}{chr(10)}"\
+                    f"---------------------------------------------------{chr(10)}"\
+                    f"----------------- GENERAL + SPOT DUST -------------{chr(10)}"\
+                    f"---------------------------------------------------{chr(10)}"\
+                    f"Avg Price Symbol      [1] - Mark Price Symbol [2]  {chr(10)}"\
+                    f"Symbol Info           [3] - RateLimits        [4]  {chr(10)}"\
+                    f"Test Connectivity     [5] - Convert Dust Spot [6]  {chr(10)}{chr(10)}"\
+                    f"---------------------------------------------------{chr(10)}"\
+                    f"----------------- ACCOUNT SPOT --------------------{chr(10)}"\
+                    f"---------------------------------------------------{chr(10)}"\
+                    f"Balance               [71] - Make Order       [72] {chr(10)}"\
+                    f"Get Open Orders       [73] - Cancel Order     [74] {chr(10)}{chr(10)}"\
+                    f"---------------------------------------------------{chr(10)}"\
+                    f"----------------- ACCOUNT MARGIN ------------------{chr(10)}"\
+                    f"---------------------------------------------------{chr(10)}"\
+                    f"Balance               [81] - Make Order       [82] {chr(10)}"\
+                    f"Get Open Orders       [83] - Cancel Order     [84] {chr(10)}{chr(10)}"\
+                    f"---------------------------------------------------{chr(10)}"\
+                    f"----------------- ACCOUNT FUTURES -----------------{chr(10)}"\
+                    f"---------------------------------------------------{chr(10)}"\
+                    f"Balance               [91] - Make Order       [92] {chr(10)}"\
+                    f"Get Open Orders       [93] - Cancel Order     [94] {chr(10)}"\
+                    f"Get Open Positions    [95] ----------------------- {chr(10)}{chr(10)}"\
                     f"CHOOSE Number: ")
     run(int(choose),symbol)
