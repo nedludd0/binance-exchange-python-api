@@ -10,8 +10,9 @@ Both Spot and Margin Normal supported
 - pleasant formatting for open orders
 - calculation in % of the quantities to sell
 - calculation in % of the quantities to buy
-- get symbol info
-- get system status
+- see symbol info
+- see system status
+- see symbol avg price & symbol mark price
 
 # Wallet Spot
 - submitting of **market orders** 
