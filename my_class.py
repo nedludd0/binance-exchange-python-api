@@ -595,13 +595,13 @@ class BinanceAPI:
                 _mark_price_decimal = Decimal(_response.get('markPrice'))
                 _response_tuple = ('OK', _mark_price_decimal)
             else:
-                _response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_mark_price_funding_rate',_inputs,'_response is None')}")
+                _response_tuple = ('NOK',  f"{ utility.my_log('Error','general_get_symbol_mark_price',_inputs,'_response is None')}")
 
         except BinanceAPIException as e:
             _error = str(e).split(":")[1]
             _response_tuple = ('NOK',  _error)
         except Exception:
-            _response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_mark_price_funding_rate',_inputs,traceback.format_exc(2))}")
+            _response_tuple = ('NOK',  f"{ utility.my_log('Exception','general_get_symbol_mark_price',_inputs,traceback.format_exc(2))}")
 
         return(_response_tuple)
 
@@ -1259,6 +1259,49 @@ class BinanceAPI:
 
 
         return(_response_tuple)
+
+    # Set Leverage - only Futures
+    def account_set_symbol_leverage(self, p_leverage = 50, p_symbol_input = None):
+
+        # Prepare
+        _inputs                 = None 
+        _response_tuple         = None                  
+        _response               = None
+        _symbol_exists          = None
+        _symbol_work            = None
+
+        # Choose Symbol
+        if not p_symbol_input:
+            _symbol_work = self.symbol
+        else:
+            _symbol_work = p_symbol_input
+
+        # Set Inputs
+        _inputs = f"{p_leverage}|{_symbol_work}"
+
+        # Check if Symbol Exists
+        _symbol_exists = self.general_check_if_symbol_exists(_symbol_work)
+        if _symbol_exists[0] == 'NOK':
+            _response_tuple = (_symbol_exists[0],  _symbol_exists[1])
+            return(_response_tuple)
+
+        # Set Leverage
+        try:
+            _response = self.client.futures_change_leverage(symbol=_symbol_work,leverage = p_leverage)
+            if _response:
+                _response_tuple = ('OK', _response)
+            else:
+                _response_tuple = ('NOK',  f"{ utility.my_log('Error','account_set_symbol_leverage',_inputs,'_response is None')}")
+
+        except BinanceAPIException as e:
+            _error = str(e).split(":")[1]
+            _response_tuple = ('NOK',  _error)
+        except Exception:
+            _response_tuple = ('NOK',  f"{ utility.my_log('Exception','account_set_symbol_leverage',_inputs,traceback.format_exc(2))}")
+
+        return(_response_tuple)
+        
+
 
 
     """ ORDER """

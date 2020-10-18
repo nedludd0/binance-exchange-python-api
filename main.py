@@ -781,6 +781,36 @@ def run(choose, symbol):
             print(f"-- ERROR --")
             print(f"{_binance_obj.get_client_msg_nok()}") 
 
+    # Set Symbol Leverage
+    elif choose == 96:
+        
+        _leverage = 125
+          
+        _binance_obj = BinanceAPI(p_api_pub_key = api_key, p_api_secret_key = api_sec, p_symbol_first = symbol_first, p_symbol_second = symbol_second)
+        
+        if _binance_obj.check_client_build_ok():
+                    
+            _out = _binance_obj.account_set_symbol_leverage(p_leverage=_leverage)
+    
+            if _out[0] == 'OK':
+                print(f"{chr(10)}------------")
+                print(f"-- RESULT --")
+                print(f"------------")
+                print(_out[1])            
+                print(f"{chr(10)}")
+            elif _out[0] == 'NOK':
+                print(f"{chr(10)}-----------")
+                print(f"-- ERROR --")
+                print(f"-----------") 
+                print(f"{_out[1]}")
+                print(f"{chr(10)}") 
+
+        else:
+            
+            print(f"-- ERROR --")
+            print(f"{_binance_obj.get_client_msg_nok()}") 
+
+
     else:
         
         print(f"{chr(10)}?? But what did you choose ?? --> choose = {choose}{chr(10)}")
@@ -796,27 +826,27 @@ if __name__ == "__main__":
     print(f"{chr(10)}Pair we are working on: {symbol}{chr(10)}")
     
     choose = input( f"CHOOSE WHAT TO DO:  {chr(10)}{chr(10)}"\
-                    f"---------------------------------------------------{chr(10)}"\
-                    f"----------------- GENERAL + SPOT DUST -------------{chr(10)}"\
-                    f"---------------------------------------------------{chr(10)}"\
-                    f"Avg Price Symbol      [1] - Mark Price Symbol [2]  {chr(10)}"\
-                    f"Symbol Info           [3] - RateLimits        [4]  {chr(10)}"\
-                    f"Test Connectivity     [5] - Convert Dust Spot [6]  {chr(10)}{chr(10)}"\
-                    f"---------------------------------------------------{chr(10)}"\
-                    f"----------------- ACCOUNT SPOT --------------------{chr(10)}"\
-                    f"---------------------------------------------------{chr(10)}"\
-                    f"Balance               [71] - Make Order       [72] {chr(10)}"\
-                    f"Get Open Orders       [73] - Cancel Order     [74] {chr(10)}{chr(10)}"\
-                    f"---------------------------------------------------{chr(10)}"\
-                    f"----------------- ACCOUNT MARGIN ------------------{chr(10)}"\
-                    f"---------------------------------------------------{chr(10)}"\
-                    f"Balance               [81] - Make Order       [82] {chr(10)}"\
-                    f"Get Open Orders       [83] - Cancel Order     [84] {chr(10)}{chr(10)}"\
-                    f"---------------------------------------------------{chr(10)}"\
-                    f"----------------- ACCOUNT FUTURES -----------------{chr(10)}"\
-                    f"---------------------------------------------------{chr(10)}"\
-                    f"Balance               [91] - Make Order       [92] {chr(10)}"\
-                    f"Get Open Orders       [93] - Cancel Order     [94] {chr(10)}"\
-                    f"Get Open Positions    [95] ----------------------- {chr(10)}{chr(10)}"\
+                    f"-------------------------------------------------------{chr(10)}"\
+                    f"----------------- GENERAL + SPOT DUST -----------------{chr(10)}"\
+                    f"-------------------------------------------------------{chr(10)}"\
+                    f"Avg Price Symbol      [1] - Mark Price Symbol     [2]  {chr(10)}"\
+                    f"Symbol Info           [3] - RateLimits            [4]  {chr(10)}"\
+                    f"Test Connectivity     [5] - Convert Dust Spot     [6]  {chr(10)}{chr(10)}"\
+                    f"-------------------------------------------------------{chr(10)}"\
+                    f"----------------- ACCOUNT SPOT ------------------------{chr(10)}"\
+                    f"-------------------------------------------------------{chr(10)}"\
+                    f"Balance               [71] - Make Order           [72] {chr(10)}"\
+                    f"Get Open Orders       [73] - Cancel Order         [74] {chr(10)}{chr(10)}"\
+                    f"-------------------------------------------------------{chr(10)}"\
+                    f"----------------- ACCOUNT MARGIN ----------------------{chr(10)}"\
+                    f"-------------------------------------------------------{chr(10)}"\
+                    f"Balance               [81] - Make Order           [82] {chr(10)}"\
+                    f"Get Open Orders       [83] - Cancel Order         [84] {chr(10)}{chr(10)}"\
+                    f"-------------------------------------------------------{chr(10)}"\
+                    f"----------------- ACCOUNT FUTURES ---------------------{chr(10)}"\
+                    f"-------------------------------------------------------{chr(10)}"\
+                    f"Balance               [91] - Make Order           [92] {chr(10)}"\
+                    f"Get Open Orders       [93] - Cancel Order         [94] {chr(10)}"\
+                    f"Get Open Positions    [95] - Set Symbol Leverage  [96] {chr(10)}{chr(10)}"\
                     f"CHOOSE Number: ")
     run(int(choose),symbol)
